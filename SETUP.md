@@ -3,7 +3,7 @@
 ## 1. Create the Hugging Face Space
 
 1. On Hugging Face, create a new Space: **Docker** SDK, free CPU hardware.
-2. Note its owner/name, e.g. `itanvirt/hf-hermes` — you'll need this for
+2. Note its owner/name, e.g. `itanvirt/hf_hermes` — you'll need this for
    the sync workflow and the Cloudflare Worker config.
 
 ## 2. Add Space secrets
@@ -27,7 +27,7 @@ of secret names (without values).
 ## 3. Sync this GitHub repo to the Space
 
 The workflow in `.github/workflows/sync-to-hf.yml` pushes this repo to
-`huggingface.co/spaces/itanvirt/hf-hermes` on every push to `main`.
+`huggingface.co/spaces/itanvirt/hf_hermes` on every push to `main`.
 
 1. Create a Hugging Face token with **write** access (can be the same
    token as `HF_TOKEN` above, or a separate one).
