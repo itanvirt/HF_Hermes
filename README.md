@@ -28,14 +28,20 @@ on the free CPU tier, with:
 
 ## Quickstart: duplicate this Space
 
-1. Click **Duplicate this Space** (top right).
+1. Click **Duplicate this Space** (top right). The duplicate dialog suggests
+   a new Space name (Hugging Face defaults this to a hyphenated slug,
+   independent of the source repo's name) — pick whatever you like.
 2. Fill in the required secrets (see below).
-3. Wait for the build to finish, then open the Space.
+3. Wait for the build to finish, then open the Space **in its own tab**
+   (`https://<owner>-<space>.hf.space`, not the embedded view on
+   huggingface.co — some browsers block cookies in embedded iframes, which
+   breaks the Terminal/ENV Builder login).
 4. Visit `/env-builder` (unlock with your `GATEWAY_TOKEN`) to confirm
    everything is configured, or `/terminal` to run `hermes setup`
    interactively if anything needs adjusting.
 5. (Optional) Deploy the Cloudflare Worker in `cloudflare/` to keep the free
-   Space awake — see `cloudflare/README.md`.
+   Space awake — see `cloudflare/README.md`. Until it's deployed, the
+   "Keep Awake" card on the dashboard correctly shows "NOT CONFIGURED".
 
 ## Required secrets
 

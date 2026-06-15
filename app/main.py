@@ -85,6 +85,7 @@ async def login(request: Request, token: str = Form(...), next: str = Form("/"))
         max_age=auth.SESSION_MAX_AGE,
         httponly=True,
         samesite="lax",
+        secure=True,
     )
     return response
 

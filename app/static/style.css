@@ -176,6 +176,13 @@ body {
     margin-bottom: 6px;
 }
 
+.hint {
+    text-align: center;
+    margin-top: 12px;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+}
+
 .footer {
     text-align: center;
     margin-top: 40px;

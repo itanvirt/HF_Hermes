@@ -14,10 +14,14 @@
         </div>
 
         <div class="actions">
-            <a class="btn primary" href="/agent">Open Hermes Agent &rarr;</a>
-            <a class="btn" href="/terminal">&#x1F4BB; Open Terminal &rarr;</a>
-            <a class="btn" href="/env-builder">&#9881; ENV Builder &rarr;</a>
+            <a class="btn primary" href="/agent" target="_blank" rel="noopener">Open Hermes Agent &rarr;</a>
+            <a class="btn" href="/terminal" target="_blank" rel="noopener">&#x1F4BB; Open Terminal &rarr;</a>
+            <a class="btn" href="/env-builder" target="_blank" rel="noopener">&#9881; ENV Builder &rarr;</a>
         </div>
+        <p class="hint">Opens in a new tab. If login doesn't stick, make sure
+            you're on the Space's own page (<code>*.hf.space</code>) rather
+            than the embedded view on huggingface.co — some browsers block
+            cookies in embedded iframes.</p>
 
         <div class="cards">
             <div class="card {{ 'active' if status.gateway.online else '' }}">
