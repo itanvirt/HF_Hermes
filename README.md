@@ -11,6 +11,8 @@ license: mit
 
 # Hermes Agent — self-hosted, free-tier build
 
+[![Duplicate this Space](https://huggingface.co/datasets/huggingface/badges/resolve/main/duplicate-this-space-md.svg)](https://huggingface.co/spaces/itanvirt/hf-hermes?duplicate=true)
+
 A ready-to-duplicate Hugging Face Space that runs [Hermes Agent](https://github.com/NousResearch/hermes-agent)
 on the free CPU tier, with:
 
