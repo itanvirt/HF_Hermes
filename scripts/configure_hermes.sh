@@ -38,6 +38,16 @@ case "${LLM_MODEL:-}" in
         ;;
 esac
 
+# --- Telegram Bot API proxy (via Cloudflare Worker, see configure_cloudflare.sh) ---
+# If configure_cloudflare.sh deployed a reverse proxy for api.telegram.org
+# (works around this network blocking outbound connections to Telegram),
+# point Hermes's Telegram client at it instead of the public API.
+CLOUDFLARE_PROXY_ENV_FILE="${CLOUDFLARE_PROXY_ENV_FILE:-/home/user/app/data/cloudflare_proxy.env}"
+if [ -f "$CLOUDFLARE_PROXY_ENV_FILE" ]; then
+    # shellcheck disable=SC1090
+    source "$CLOUDFLARE_PROXY_ENV_FILE"
+fi
+
 # --- optional Telegram webhook mode -----------------------------------
 # Default is long-polling (outbound to Telegram, no extra config). Set
 # TELEGRAM_MODE=webhook to switch to inbound delivery via this Space's own
@@ -77,6 +87,15 @@ if command -v hermes >/dev/null 2>&1 && [ -n "${LLM_MODEL:-}" ]; then
         hermes config set model.provider "${HERMES_PROVIDER}"
     } >/home/user/app/data/hermes-setup.log 2>&1 || \
         echo "[configure_hermes] 'hermes config set' did not complete; configure manually via the in-browser terminal." \
+            >>/home/user/app/data/hermes-setup.log
+fi
+
+if command -v hermes >/dev/null 2>&1 && [ -n "${TELEGRAM_API_BASE_URL:-}" ]; then
+    {
+        hermes config set platforms.telegram.extra.base_url "${TELEGRAM_API_BASE_URL}"
+        hermes config set platforms.telegram.extra.base_file_url "${TELEGRAM_API_FILE_BASE_URL}"
+    } >>/home/user/app/data/hermes-setup.log 2>&1 || \
+        echo "[configure_hermes] 'hermes config set' for the Telegram proxy did not complete; configure manually via the in-browser terminal." \
             >>/home/user/app/data/hermes-setup.log
 fi
 

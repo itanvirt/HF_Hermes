@@ -1,16 +1,21 @@
 # Cloudflare Worker (manual / advanced)
 
 **You probably don't need this.** If you set the `CLOUDFLARE_WORKERS_TOKEN`
-Space secret, the container automatically deploys an equivalent keep-awake
-Worker on every boot (see `scripts/configure_keepawake.sh` and the **Keep
-Awake** card on the dashboard) — zero manual steps. This standalone copy is
-useful if that auto-deploy fails, or if you want the optional Telegram
-webhook proxy:
+Space secret, the container automatically deploys an equivalent Worker on
+every boot (see `scripts/configure_cloudflare.sh` and the **Keep Awake** /
+**Telegram** cards on the dashboard) — zero manual steps. This standalone
+copy is useful if that auto-deploy fails, or if you want the optional
+Telegram webhook proxy:
 
 1. **Keep-awake**: pings `/health` on a cron schedule so a free-tier Space
-   stays awake. The Telegram gateway uses long-polling, so the container
-   needs to stay running for the bot to keep responding.
-2. **Telegram webhook proxy (optional/advanced)**: if you've manually
+   stays awake.
+2. **Telegram Bot API proxy**: forwards `/bot*` and `/file/bot*` to
+   `api.telegram.org`, so Hermes's Telegram client (long-polling by default)
+   can reach Telegram even on networks that block it directly. The
+   auto-deployed Worker configures this for you; with this standalone copy
+   you'd point Hermes at it yourself (`hermes config set
+   platforms.telegram.extra.base_url`, see below).
+3. **Telegram webhook proxy (optional/advanced)**: if you've manually
    switched Hermes to webhook mode (`TELEGRAM_WEBHOOK_URL` /
    `TELEGRAM_WEBHOOK_PORT`, see the Hermes Agent docs) instead of the
    default long-polling, this proxies Telegram's webhook updates to the
@@ -52,6 +57,16 @@ npx wrangler secret put GATEWAY_TOKEN
 npx wrangler secret put TELEGRAM_WEBHOOK_SECRET
 # -> any random string, e.g. `openssl rand -hex 20`
 ```
+
+## (Optional) Point Hermes's Telegram client at the worker's API proxy
+
+```bash
+hermes config set platforms.telegram.extra.base_url "https://hermes-agent-proxy.<your-subdomain>.workers.dev/bot"
+hermes config set platforms.telegram.extra.base_file_url "https://hermes-agent-proxy.<your-subdomain>.workers.dev/file/bot"
+```
+
+Run from **Open Terminal** on the Space, then restart the gateway. The
+auto-deployed Worker does this for you automatically.
 
 ## (Optional) Point Telegram at the worker for webhook mode
 

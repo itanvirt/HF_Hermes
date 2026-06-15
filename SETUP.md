@@ -46,39 +46,58 @@ The workflow in `.github/workflows/sync-to-hf.yml` pushes this repo to
   runtime, Telegram, backup and keep-awake.
 - Click **Open Terminal** or **ENV Builder**, and unlock with the
   `GATEWAY_TOKEN` value you set in step 2.
-- On boot, the container writes your `LLM_MODEL` / `LLM_API_KEY` and
-  Telegram secrets into `~/.hermes/.env` and runs `hermes config set` to
-  select the model and provider. The gateway then starts with
-  `hermes gateway run`, which talks to Telegram via long-polling — your bot
-  should come online within seconds of the Space starting. If anything
-  looks off, check `data/hermes-setup.log` or finish configuration from
-  **Open Hermes Agent** or **Open Terminal** (`hermes config`, `hermes
-  model`), then click **Restart agent** in ENV Builder.
+- Before configuring Hermes, the container deploys the Cloudflare Worker
+  from step 5 (if `CLOUDFLARE_WORKERS_TOKEN` is set) and, when a
+  `TELEGRAM_BOT_TOKEN` is configured, points Hermes's Telegram client at
+  that Worker's `/bot` proxy instead of `api.telegram.org` directly.
+- The container then writes your `LLM_MODEL` / `LLM_API_KEY` and Telegram
+  secrets into `~/.hermes/.env` and runs `hermes config set` to select the
+  model, provider, and (if proxied) the Telegram API base URL. The gateway
+  then starts with `hermes gateway run` (long-polling) — your bot should
+  come online within seconds of the Space starting. If anything looks off,
+  check `data/hermes-setup.log` or finish configuration from **Open Hermes
+  Agent** or **Open Terminal** (`hermes config`, `hermes model`), then click
+  **Restart agent** in ENV Builder.
 
 ### Troubleshooting: Telegram bot not connecting
 
 Some networks (including some Hugging Face Spaces) block outbound
 connections to Telegram's API, so long-polling never establishes even
-though everything is configured correctly — check
-`data/hermes-setup.log` and the gateway logs (**Open Terminal** →
-`tail -n 60 /var/log/supervisor/gateway.log`) for `connect timed out`
-errors to `api.telegram.org`.
+though everything is configured correctly — the gateway logs (**Open
+Terminal** → `tail -n 60 /var/log/supervisor/gateway.log`) would show
+`connect timed out` errors to `api.telegram.org`.
 
-If you see that, set `TELEGRAM_MODE=webhook` as a Space variable and
-restart. The container then switches the gateway to webhook mode and
-points it at `https://<this-space>.hf.space/telegram-webhook`, so
-Telegram delivers updates *to* the Space instead of the gateway polling
-*from* it. Note this only helps if the block is one-directional —
-registering the webhook and sending replies are still outbound calls to
-Telegram's API, so if those are blocked too this won't fully resolve it.
+Setting `CLOUDFLARE_WORKERS_TOKEN` (step 5) fixes this automatically: the
+container reverse-proxies Telegram's API through your Cloudflare Worker,
+which isn't subject to the same restriction. The **Telegram** card on the
+dashboard shows "Long-polling via Cloudflare Worker proxy" once this is
+active.
 
-## 5. Keep-awake (automatic)
+If the Telegram card instead shows a proxy error, check
+`data/cloudflare-setup.log` — the most common cause is that your
+Cloudflare account doesn't have a `workers.dev` subdomain yet. Claim one
+once at Cloudflare dashboard → Workers & Pages → "Set up a subdomain", then
+restart the Space.
+
+As a last resort, `TELEGRAM_MODE=webhook` switches the gateway to inbound
+delivery via `https://<this-space>.hf.space/telegram-webhook` instead of
+polling — but registering the webhook and sending replies are still
+outbound calls to Telegram's API, so this only helps if the Cloudflare
+proxy above isn't an option.
+
+## 5. Keep-awake & Telegram proxy (automatic)
 
 If you set `CLOUDFLARE_WORKERS_TOKEN` in step 2, the container deploys a
-Cloudflare Worker on every boot that pings this Space's `/health` endpoint
-every 10 minutes — nothing more to do. Check the **Keep Awake** card on the
-dashboard to confirm it deployed (or `data/keepawake-setup.log` if it shows
-an error).
+Cloudflare Worker on every boot that:
+
+- pings this Space's `/health` endpoint every 10 minutes, so the free tier
+  doesn't go to sleep, and
+- reverse-proxies Telegram's Bot API (`api.telegram.org`), which Hermes
+  uses automatically if `TELEGRAM_BOT_TOKEN` is set (see step 4).
+
+Nothing more to do — check the **Keep Awake** and **Telegram** cards on the
+dashboard to confirm it deployed (or `data/cloudflare-setup.log` if either
+shows an error).
 
 The Worker is created under the first account your token can see. If your
 token has access to multiple Cloudflare accounts, set the

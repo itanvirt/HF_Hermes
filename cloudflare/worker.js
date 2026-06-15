@@ -1,12 +1,17 @@
 /**
  * Hermes Agent companion Cloudflare Worker.
  *
- * Two jobs:
- *  1. Telegram webhook proxy - Telegram posts updates here; the worker
+ * Jobs:
+ *  1. Telegram Bot API proxy - forwards /bot* and /file/bot* requests to
+ *     api.telegram.org, so Hermes can reach Telegram even on networks that
+ *     block it directly. Point Hermes at this with `hermes config set
+ *     platforms.telegram.extra.base_url https://<worker>/bot` (and
+ *     base_file_url with /file/bot).
+ *  2. Telegram webhook proxy - Telegram posts updates here; the worker
  *     checks the secret token Telegram sends, then forwards the update to
  *     the Hugging Face Space with the gateway's bearer token attached
  *     (Telegram itself cannot send custom Authorization headers).
- *  2. Keep-awake cron - on a schedule, pings the Space's /health endpoint
+ *  3. Keep-awake cron - on a schedule, pings the Space's /health endpoint
  *     so free-tier Spaces don't go to sleep from inactivity.
  *
  * Required secrets (set with `wrangler secret put <NAME>`):
@@ -21,6 +26,13 @@ export default {
 
     if (url.pathname === "/health") {
       return new Response("ok", { status: 200 });
+    }
+
+    if (url.pathname.startsWith("/bot") || url.pathname.startsWith("/file/bot")) {
+      url.protocol = "https:";
+      url.hostname = "api.telegram.org";
+      url.port = "";
+      return fetch(url.toString(), request);
     }
 
     if (url.pathname === "/telegram" && request.method === "POST") {

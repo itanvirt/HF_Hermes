@@ -9,7 +9,16 @@ from pathlib import Path
 START_TIME = time.time()
 APP_PORT = int(os.environ.get("PORT", "7860"))
 BACKUP_STATE_FILE = Path(os.environ.get("BACKUP_STATE_FILE", "/home/user/app/data/backup_state.json"))
-KEEPAWAKE_STATE_FILE = Path(os.environ.get("KEEPAWAKE_STATE_FILE", "/home/user/app/data/keepawake_state.json"))
+CLOUDFLARE_STATE_FILE = Path(os.environ.get("CLOUDFLARE_STATE_FILE", "/home/user/app/data/cloudflare_state.json"))
+
+
+def _cloudflare_state() -> dict:
+    if CLOUDFLARE_STATE_FILE.exists():
+        try:
+            return json.loads(CLOUDFLARE_STATE_FILE.read_text())
+        except Exception:
+            pass
+    return {}
 
 
 def _format_duration(seconds: float) -> str:
@@ -77,7 +86,17 @@ def telegram_status() -> dict:
         os.environ.get("TELEGRAM_ALLOWED_USERS")
     )
     webhook_mode = os.environ.get("TELEGRAM_MODE", "").lower() == "webhook"
-    via = "Webhook (inbound to this Space)" if webhook_mode else "Long-polling (outbound to Telegram)"
+    proxy = _cloudflare_state().get("telegram_proxy") or {}
+    if proxy.get("status") == "configured":
+        via = "Long-polling via Cloudflare Worker proxy"
+    elif webhook_mode:
+        via = "Webhook (inbound to this Space)"
+    elif proxy.get("status") == "error":
+        via = f"Long-polling (proxy error: {proxy.get('detail')})"
+    elif configured:
+        via = "Long-polling (direct to Telegram)"
+    else:
+        via = "Long-polling (outbound to Telegram)"
     return {
         "configured": configured,
         "via": via,
@@ -102,27 +121,24 @@ def backup_status() -> dict:
 def keep_awake_status() -> dict:
     space_host = os.environ.get("SPACE_HOST", "")
     default_target = f"https://{space_host}/health" if space_host else "<your-space>.hf.space/health"
-    if KEEPAWAKE_STATE_FILE.exists():
-        try:
-            data = json.loads(KEEPAWAKE_STATE_FILE.read_text())
-            status = data.get("status")
-            if status == "configured":
-                worker = data.get("worker")
-                return {
-                    "configured": True,
-                    "via": f"Cloudflare Worker ({worker})" if worker else "Cloudflare Worker",
-                    "target": data.get("target") or default_target,
-                }
-            if status == "error":
-                detail = data.get("detail")
-                via = f"Cloudflare error: {detail}" if detail else "Cloudflare Worker deploy failed (see data/keepawake-setup.log)"
-                return {
-                    "configured": False,
-                    "via": via,
-                    "target": data.get("target") or default_target,
-                }
-        except Exception:
-            pass
+    data = _cloudflare_state().get("keepawake")
+    if data:
+        status = data.get("status")
+        if status == "configured":
+            worker = data.get("worker")
+            return {
+                "configured": True,
+                "via": f"Cloudflare Worker ({worker})" if worker else "Cloudflare Worker",
+                "target": data.get("target") or default_target,
+            }
+        if status == "error":
+            detail = data.get("detail")
+            via = f"Cloudflare error: {detail}" if detail else "Cloudflare Worker deploy failed (see data/cloudflare-setup.log)"
+            return {
+                "configured": False,
+                "via": via,
+                "target": data.get("target") or default_target,
+            }
     cf_token = os.environ.get("CLOUDFLARE_WORKERS_TOKEN", "")
     return {
         "configured": False,

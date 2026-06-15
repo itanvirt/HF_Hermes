@@ -24,10 +24,12 @@ on the free CPU tier, with:
 - a Telegram bot via the Hermes messaging gateway (long-polling, no inbound
   webhook required)
 - automatic backups of agent state to a private Hugging Face dataset
-- automatic keep-awake: on first boot, the container deploys a tiny
-  Cloudflare Worker (using your `CLOUDFLARE_WORKERS_TOKEN` secret) that
-  pings `/health` every 10 minutes — no manual steps, works for any
-  duplicated Space
+- automatic keep-awake + Telegram proxy: on first boot, the container
+  deploys a tiny Cloudflare Worker (using your `CLOUDFLARE_WORKERS_TOKEN`
+  secret) that pings `/health` every 10 minutes so the free Space doesn't
+  sleep, and reverse-proxies Telegram's API so the bot still connects on
+  networks that block direct outbound connections to `api.telegram.org` —
+  no manual steps, works for any duplicated Space
 
 ## Quickstart: duplicate this Space
 
@@ -55,7 +57,7 @@ after) duplicating:
 | Secret | Description |
 | --- | --- |
 | `HF_TOKEN` | Hugging Face token (write access) — used for the automatic backup dataset. |
-| `CLOUDFLARE_WORKERS_TOKEN` | Cloudflare API token with "Edit Cloudflare Workers" permission. The container uses this to auto-deploy a keep-awake Worker on first boot — no manual steps. |
+| `CLOUDFLARE_WORKERS_TOKEN` | Cloudflare API token with "Edit Cloudflare Workers" permission. The container uses this to auto-deploy a Worker on first boot that pings `/health` (keep-awake) and proxies Telegram's API (so the bot connects even if this network blocks `api.telegram.org` directly) — no manual steps. |
 | `TELEGRAM_ALLOWED_USERS` | Comma-separated Telegram user IDs allowed to message the agent. |
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token from `@BotFather`. |
 | `GATEWAY_TOKEN` | Shared secret protecting the terminal and ENV Builder. Use a long random string. |

@@ -3,10 +3,13 @@ set -uo pipefail
 
 echo "=== Hermes Agent (HF Space) starting ==="
 
-bash /home/user/app/scripts/configure_hermes.sh
+# Deploys the Cloudflare Worker (keep-awake ping + Telegram Bot API proxy)
+# before configure_hermes.sh, which reads its output (cloudflare_proxy.env)
+# to point Hermes at the proxy when Telegram is configured. Synchronous
+# (with short curl timeouts) so config.yaml is written correctly on first
+# boot; best-effort and non-fatal.
+bash /home/user/app/scripts/configure_cloudflare.sh || true
 
-# Best-effort, runs in the background so a slow/unreachable Cloudflare API
-# doesn't delay startup.
-bash /home/user/app/scripts/configure_keepawake.sh &
+bash /home/user/app/scripts/configure_hermes.sh
 
 exec supervisord -c /home/user/app/supervisord.conf
