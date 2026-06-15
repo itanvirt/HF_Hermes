@@ -16,7 +16,21 @@ GATEWAY_PORT = int(os.environ.get("GATEWAY_PORT", "8642"))
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", str(Path.home() / ".hermes")))
 HERMES_ENV_FILE = HERMES_HOME / ".env"
 TELEGRAM_WEBHOOK_PATH = os.environ.get("HERMES_TELEGRAM_WEBHOOK_PATH", "/telegram-webhook")
-TELEGRAM_WEBHOOK_SECRET = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
+
+
+def _read_hermes_env_var(name: str) -> str:
+    # configure_hermes.sh may generate TELEGRAM_WEBHOOK_SECRET itself (when
+    # not provided as a Space secret) and only write it to ~/.hermes/.env,
+    # not the process environment - so check both.
+    if not HERMES_ENV_FILE.exists():
+        return ""
+    for line in HERMES_ENV_FILE.read_text().splitlines():
+        if line.startswith(f"{name}="):
+            return line.split("=", 1)[1].strip()
+    return ""
+
+
+TELEGRAM_WEBHOOK_SECRET = os.environ.get("TELEGRAM_WEBHOOK_SECRET") or _read_hermes_env_var("TELEGRAM_WEBHOOK_SECRET")
 
 app = FastAPI(title="Hermes Agent")
 app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="static")
