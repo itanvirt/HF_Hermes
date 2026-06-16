@@ -69,6 +69,7 @@ LOG_FILES = {
     "gateway":     "/var/log/supervisor/gateway.log",
     "web":         "/var/log/supervisor/web.log",
     "supervisor":  "/var/log/supervisor/supervisord.log",
+    "dashboard":   "/var/log/supervisor/dashboard.log",
     "startup":     "/home/user/app/data/startup.log",
     "hermes-setup":"/home/user/app/data/hermes-setup.log",
     "cloudflare":  "/home/user/app/data/cloudflare-setup.log",
