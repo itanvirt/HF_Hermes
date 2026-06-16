@@ -7,6 +7,13 @@ sdk: docker
 app_port: 7860
 pinned: false
 license: mit
+variables:
+  CLOUDFLARE_KEEPALIVE_ENABLED: "true"
+  SYNC_INTERVAL: "600"
+  BACKUP_DATASET_NAME: "hermes-backup"
+  GATEWAY_RESTART_DELAY: "5"
+  GATEWAY_MAX_RESTARTS: "0"
+  GATEWAY_PORT: "8642"
 ---
 
 # Hermes Agent — self-hosted, free-tier build
