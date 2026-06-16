@@ -133,11 +133,25 @@ def _read_soul_md() -> str:
     """Return the active content of ~/.hermes/SOUL.md, stripping template comments."""
     try:
         text = (HERMES_HOME / "SOUL.md").read_text()
-        # Strip the HTML comment block that ships as template instructions
         text = re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
         return text.strip()
     except Exception:
         return ""
+
+
+def _build_system_prompt() -> str:
+    """Combine SOUL.md (agent persona) and memories/USER.md (user facts) into one system prompt."""
+    parts = []
+    soul = _read_soul_md()
+    if soul:
+        parts.append(soul)
+    try:
+        user_mem = (HERMES_HOME / "memories" / "USER.md").read_text().strip()
+        if user_mem:
+            parts.append(f"## User profile\n{user_mem}")
+    except Exception:
+        pass
+    return "\n\n".join(parts)
 
 
 app = FastAPI(title="Hermes Agent")
@@ -262,7 +276,7 @@ async def agent_page(request: Request):
             "request": request,
             "model": data["model"]["model"],
             "space_host": SPACE_HOST,
-            "system_prompt": _read_soul_md(),
+            "system_prompt": _build_system_prompt(),
         },
     )
 
