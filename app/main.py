@@ -15,7 +15,8 @@ from fastapi.templating import Jinja2Templates
 from app import auth, backup, status, terminal
 
 APP_DIR = Path(__file__).resolve().parent
-GATEWAY_PORT = int(os.environ.get("GATEWAY_PORT", "8642"))
+GATEWAY_PORT    = int(os.environ.get("GATEWAY_PORT", "8642"))
+DASHBOARD_PORT  = int(os.environ.get("DASHBOARD_PORT", "9119"))
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", str(Path.home() / ".hermes")))
 HERMES_ENV_FILE = HERMES_HOME / ".env"
 TELEGRAM_WEBHOOK_PATH = os.environ.get("HERMES_TELEGRAM_WEBHOOK_PATH", "/telegram-webhook")
@@ -693,4 +694,81 @@ async def api_files_download(request: Request, path: str):
         content=target.read_bytes(),
         media_type=ctype,
         headers={"Content-Disposition": f'attachment; filename="{target.name}"'},
+    )
+
+
+# --------------------------------------------------------------------------
+# Hermes built-in dashboard proxy  (/hermes/*)
+#
+# Proxies to the hermes-dashboard supervisor process on DASHBOARD_PORT (9119).
+# Requires session cookie so the dashboard isn't publicly accessible.
+# Injects window.__HERMES_BASE_PATH__ into every HTML response so the SPA
+# prefixes all its internal routes and API calls with /hermes.
+# --------------------------------------------------------------------------
+_DASH_STRIP_HEADERS = {"host", "content-length", "transfer-encoding", "content-encoding"}
+
+
+@app.get("/hermes", include_in_schema=False)
+async def hermes_root_redirect():
+    return RedirectResponse(url="/hermes/")
+
+
+@app.api_route("/hermes/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
+async def hermes_proxy(path: str, request: Request):
+    if not auth.verify_session_cookie(request.cookies.get(auth.COOKIE_NAME)):
+        return RedirectResponse(url=f"/login?next=/hermes/")
+
+    upstream_url = f"http://127.0.0.1:{DASHBOARD_PORT}/{path}"
+    body = await request.body()
+    fwd_headers = {
+        k: v for k, v in request.headers.items()
+        if k.lower() not in {"host", "content-length"}
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+            upstream = await client.request(
+                request.method,
+                upstream_url,
+                params=dict(request.query_params),
+                content=body,
+                headers=fwd_headers,
+            )
+    except httpx.ConnectError:
+        return HTMLResponse(
+            "<html><body style='font-family:monospace;background:#08090e;color:#dde5f8;"
+            "display:flex;align-items:center;justify-content:center;height:100vh;margin:0'>"
+            "<div style='text-align:center'>"
+            "<h2 style='color:#f06b6b'>Hermes Dashboard Not Running</h2>"
+            "<p>The hermes-dashboard process hasn't started yet.<br>"
+            "Check <a href='/logs' style='color:#818cf8'>Logs → dashboard</a> for details.<br>"
+            "It may take 30–60 s after first boot.</p>"
+            "<p><a href='/system' style='color:#818cf8'>System page</a> · "
+            "<a href='/agent' style='color:#818cf8'>Back to Chat</a></p>"
+            "</div></body></html>",
+            status_code=503,
+        )
+
+    ctype = upstream.headers.get("content-type", "")
+    content = upstream.content
+
+    # Inject base-path so the SPA prefixes all routes/API calls with /hermes
+    if "text/html" in ctype:
+        html = content.decode("utf-8", errors="replace")
+        inject = '<script>window.__HERMES_BASE_PATH__="/hermes";</script>'
+        if "</head>" in html:
+            html = html.replace("</head>", inject + "</head>", 1)
+        else:
+            html = inject + html
+        content = html.encode("utf-8")
+
+    resp_headers = {
+        k: v for k, v in upstream.headers.items()
+        if k.lower() not in _DASH_STRIP_HEADERS
+    }
+    return Response(
+        content=content,
+        status_code=upstream.status_code,
+        media_type=ctype,
+        headers=resp_headers,
     )
