@@ -74,6 +74,7 @@ LOG_FILES = {
     "startup":     "/home/user/app/data/startup.log",
     "hermes-setup":"/home/user/app/data/hermes-setup.log",
     "cloudflare":  "/home/user/app/data/cloudflare-setup.log",
+    "restore":     "/home/user/app/data/hermes-restore.log",
 }
 
 

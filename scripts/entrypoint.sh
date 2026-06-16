@@ -10,6 +10,8 @@ echo "=== Hermes Agent (HF Space) starting ==="
 # boot; best-effort and non-fatal.
 bash /home/user/app/scripts/configure_cloudflare.sh || true
 
+bash /home/user/app/scripts/restore_hermes.sh || true
+
 bash /home/user/app/scripts/configure_hermes.sh
 
 bash /home/user/app/scripts/configure_startup.sh || true
