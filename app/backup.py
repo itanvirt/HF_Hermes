@@ -95,6 +95,14 @@ def run_backup() -> dict:
         # Save priority files as plain files for fast cold-start restore
         for local_rel, remote_rel in PRIORITY_FILES:
             local = HERMES_HOME / local_rel
+            # Fallback: Hermes agent sometimes writes SOUL.md into workspace/
+            # instead of the root; capture it from there if the root copy is missing.
+            if local_rel == "SOUL.md" and (not local.exists() or local.stat().st_size == 0):
+                workspace_copy = HERMES_HOME / "workspace" / "SOUL.md"
+                if workspace_copy.exists() and workspace_copy.stat().st_size > 0:
+                    import shutil
+                    shutil.copy2(workspace_copy, local)
+                    logger.info("Promoted workspace/SOUL.md → SOUL.md for backup")
             if local.exists() and local.stat().st_size > 0:
                 try:
                     api.upload_file(

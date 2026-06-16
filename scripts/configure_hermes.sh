@@ -150,8 +150,11 @@ SOUL_DEFAULT="/home/user/app/scripts/default_soul.md"
 if [ -f "$SOUL_DEFAULT" ]; then
     # Check if soul file has real content (not just template comments)
     SOUL_ACTIVE=$(sed 's/<!--.*-->//g' "$SOUL_FILE" 2>/dev/null | tr -d '[:space:]')
-    if [ -z "$SOUL_ACTIVE" ] && [ ! -f "$SOUL_FILE" ]; then
+    if [ -z "$SOUL_ACTIVE" ]; then
         cp "$SOUL_DEFAULT" "$SOUL_FILE"
+        # Also seed workspace/ path that Hermes agent sometimes writes to
+        mkdir -p "$HERMES_HOME/workspace"
+        cp "$SOUL_DEFAULT" "$HERMES_HOME/workspace/SOUL.md"
         echo "[configure_hermes] seeded SOUL.md from default." >>/home/user/app/data/hermes-setup.log
     fi
 fi
