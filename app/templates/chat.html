@@ -2,21 +2,38 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
     <title>Agent · Hermes</title>
     <link rel="stylesheet" href="/static/style.css">
     <style>
-        /* ── Chat shell ── */
-        html, body { height: 100%; overflow: hidden; }
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
 
+        /* ── Root shell ── */
         .cc-root {
             display: flex;
             height: 100vh;
+            height: 100dvh; /* iOS 15.4+ dynamic viewport */
             position: relative;
             z-index: 1;
         }
 
-        /* Sidebar */
+        /* ── Sidebar overlay (mobile) ── */
+        .cc-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.55);
+            z-index: 39;
+            backdrop-filter: blur(2px);
+        }
+        .cc-overlay.show { display: block; }
+
+        /* ── Sidebar ── */
         .cc-side {
             width: 240px;
             flex-shrink: 0;
@@ -24,44 +41,60 @@
             background: var(--surface);
             display: flex;
             flex-direction: column;
-            padding: 20px 0;
+            padding: 0;
+            z-index: 40;
+            transition: transform .25s ease;
+        }
+
+        @media (max-width: 640px) {
+            .cc-side {
+                position: fixed;
+                top: 0; left: 0; bottom: 0;
+                transform: translateX(-100%);
+                box-shadow: 4px 0 24px rgba(0,0,0,.4);
+            }
+            .cc-side.open {
+                transform: translateX(0);
+            }
         }
 
         .cc-side-logo {
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 0 18px 20px;
+            padding: 18px 18px 16px;
             border-bottom: 1px solid var(--border);
-            margin-bottom: 16px;
         }
 
         .cc-side-glyph {
-            width: 30px; height: 30px;
-            border-radius: 9px;
+            width: 28px; height: 28px;
+            border-radius: 8px;
             background: var(--accent-dim);
             border: 1px solid var(--accent-border);
             display: flex; align-items: center; justify-content: center;
             flex-shrink: 0;
         }
-
         .cc-side-glyph-dot {
-            width: 9px; height: 9px;
+            width: 8px; height: 8px;
             border-radius: 50%;
             background: var(--accent);
-            box-shadow: 0 0 10px var(--accent);
+            box-shadow: 0 0 8px var(--accent);
         }
-
         .cc-side-name {
             font-weight: 700;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
             letter-spacing: -.01em;
         }
 
+        .cc-side-nav {
+            padding: 12px 0;
+            flex: 1;
+        }
+
         .cc-side-lbl {
-            padding: 0 18px 6px;
+            padding: 8px 18px 4px;
             font-family: var(--mono);
-            font-size: 0.63rem;
+            font-size: 0.6rem;
             letter-spacing: .15em;
             text-transform: uppercase;
             color: var(--text-3);
@@ -71,125 +104,146 @@
             display: flex;
             align-items: center;
             gap: 9px;
-            padding: 9px 18px;
-            font-size: 0.84rem;
+            padding: 10px 18px;
+            font-size: 0.85rem;
             color: var(--text-2);
             cursor: pointer;
             border-left: 2px solid transparent;
-            transition: all .12s;
+            transition: background .12s, color .12s;
             text-decoration: none;
         }
-
         .cc-side-item:hover { background: var(--surface-2); color: var(--text); }
-        .cc-side-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-dim); }
-
-        .cc-side-icon { font-size: 0.95rem; flex-shrink: 0; }
-
-        .cc-side-spacer { flex: 1; }
+        .cc-side-item.active {
+            color: var(--accent);
+            border-left-color: var(--accent);
+            background: var(--accent-dim);
+        }
+        .cc-side-icon { font-size: 1rem; flex-shrink: 0; line-height: 1; }
 
         .cc-model-box {
-            margin: 0 12px 16px;
+            margin: 0 12px 12px;
             padding: 10px 12px;
             border-radius: var(--r-sm);
             background: var(--bg-2);
             border: 1px solid var(--border);
-            font-size: 0.78rem;
         }
-
         .cc-model-lbl {
             font-family: var(--mono);
-            font-size: 0.62rem;
+            font-size: 0.6rem;
             letter-spacing: .12em;
             text-transform: uppercase;
             color: var(--text-2);
             margin-bottom: 4px;
         }
-
         .cc-model-name {
             color: var(--text);
             font-family: var(--mono);
-            font-size: 0.75rem;
+            font-size: 0.74rem;
             word-break: break-all;
         }
 
-        /* Main chat area */
+        /* ── Main panel ── */
         .cc-main {
             flex: 1;
             display: flex;
             flex-direction: column;
             min-width: 0;
+            overflow: hidden;
         }
 
+        /* Top bar */
         .cc-topbar {
             flex-shrink: 0;
             height: 50px;
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
-            padding: 0 20px;
-            gap: 12px;
+            padding: 0 12px 0 16px;
+            gap: 8px;
             background: var(--bg);
+        }
+
+        .cc-menu-btn {
+            display: none;
+            background: transparent;
+            border: none;
+            color: var(--text-2);
+            font-size: 1.2rem;
+            padding: 6px 8px;
+            cursor: pointer;
+            border-radius: var(--r-xs);
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .cc-menu-btn:hover { background: var(--surface-2); color: var(--text); }
+
+        @media (max-width: 640px) {
+            .cc-menu-btn { display: flex; align-items: center; justify-content: center; }
         }
 
         .cc-topbar-title {
             font-weight: 600;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
             flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
+        /* Messages */
         .cc-messages {
             flex: 1;
             overflow-y: auto;
-            padding: 24px 20px 8px;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            padding: 20px 16px 10px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 16px;
             min-height: 0;
         }
 
+        /* Empty state */
         .cc-empty {
             flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 14px;
+            gap: 12px;
             color: var(--text-2);
-            padding-bottom: 80px;
             text-align: center;
+            padding: 40px 24px 80px;
         }
-
         .cc-empty-glyph {
-            width: 56px; height: 56px;
-            border-radius: 18px;
+            width: 52px; height: 52px;
+            border-radius: 16px;
             background: var(--accent-dim);
             border: 1px solid var(--accent-border);
             display: flex; align-items: center; justify-content: center;
             margin-bottom: 4px;
         }
-
         .cc-empty-dot {
-            width: 18px; height: 18px;
+            width: 16px; height: 16px;
             border-radius: 50%;
             background: var(--accent);
-            box-shadow: 0 0 20px var(--accent);
+            box-shadow: 0 0 16px var(--accent);
         }
+        .cc-empty-title { font-size: 1rem; font-weight: 700; color: var(--text); }
+        .cc-empty-sub { font-size: 0.82rem; max-width: 260px; line-height: 1.6; }
 
-        .cc-empty-title { font-size: 1.1rem; font-weight: 700; color: var(--text); }
-        .cc-empty-sub { font-size: 0.84rem; max-width: 280px; line-height: 1.6; }
-
+        /* Message bubbles */
         .cc-bubble-row {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 3px;
         }
-
-        .cc-bubble-row.user  { align-items: flex-end; }
+        .cc-bubble-row.user      { align-items: flex-end; }
         .cc-bubble-row.assistant { align-items: flex-start; }
 
         .cc-role {
             font-family: var(--mono);
-            font-size: 0.63rem;
+            font-size: 0.62rem;
             letter-spacing: .1em;
             text-transform: uppercase;
             color: var(--text-2);
@@ -197,13 +251,18 @@
         }
 
         .cc-bubble {
-            max-width: min(80%, 620px);
-            padding: 12px 16px;
+            max-width: min(88%, 580px);
+            padding: 11px 15px;
             border-radius: var(--r);
-            font-size: 0.9rem;
+            font-size: 0.92rem;
             line-height: 1.7;
             white-space: pre-wrap;
             word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
+        @media (max-width: 480px) {
+            .cc-bubble { max-width: 95%; font-size: 0.9rem; }
         }
 
         .cc-bubble.user {
@@ -211,53 +270,68 @@
             color: #fff;
             border-radius: var(--r) var(--r) var(--r-xs) var(--r);
         }
-
         .cc-bubble.assistant {
             background: var(--surface);
             border: 1px solid var(--border);
             color: var(--text);
             border-radius: var(--r) var(--r) var(--r) var(--r-xs);
         }
-
         .cc-bubble.streaming::after {
             content: '\25AE';
             animation: ccblink .75s step-end infinite;
             color: var(--accent);
             margin-left: 2px;
         }
-
         @keyframes ccblink { 0%,100%{opacity:1} 50%{opacity:0} }
 
         /* Input bar */
         .cc-inputbar {
             flex-shrink: 0;
             border-top: 1px solid var(--border);
-            padding: 14px 20px;
+            padding: 10px 12px;
             display: flex;
-            gap: 10px;
+            gap: 8px;
             align-items: flex-end;
             background: var(--bg);
         }
 
         .cc-input {
             flex: 1;
-            padding: 10px 14px;
+            padding: 10px 13px;
             border-radius: var(--r-sm);
             border: 1px solid var(--border-2);
             background: var(--surface);
             color: var(--text);
             font-family: var(--sans);
-            font-size: 0.9rem;
+            font-size: 16px; /* prevents iOS auto-zoom on focus */
             outline: none;
             resize: none;
             min-height: 44px;
-            max-height: 160px;
-            line-height: 1.55;
+            max-height: 140px;
+            line-height: 1.5;
             transition: border-color .15s;
+            -webkit-appearance: none;
         }
-
         .cc-input:focus { border-color: var(--accent); }
         .cc-input::placeholder { color: var(--text-2); }
+
+        .cc-send-btn {
+            flex-shrink: 0;
+            height: 44px;
+            padding: 0 16px;
+            border-radius: var(--r-sm);
+            border: none;
+            background: var(--accent);
+            color: #fff;
+            font-family: var(--sans);
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity .13s;
+            white-space: nowrap;
+        }
+        .cc-send-btn:hover { opacity: .85; }
+        .cc-send-btn:disabled { opacity: .45; cursor: default; }
 
         /* Auth overlay */
         .cc-auth {
@@ -270,24 +344,14 @@
             z-index: 50;
             padding: 20px;
         }
-
-        /* Mobile: hide sidebar */
-        @media (max-width: 640px) {
-            .cc-side { display: none; }
-        }
-
-        /* Mobile menu toggle (shown when sidebar hidden) */
-        .cc-menu-btn { display: none; }
-        @media (max-width: 640px) {
-            .cc-menu-btn { display: flex; }
-        }
+        .cc-auth .auth-card { max-width: 380px; width: 100%; }
     </style>
 </head>
 <body>
 
-<!-- AUTH OVERLAY (shown when no token stored) -->
+<!-- AUTH OVERLAY -->
 <div id="ccAuth" class="cc-auth">
-    <div class="auth-card" style="max-width:380px;">
+    <div class="auth-card">
         <div class="auth-brand">
             <div class="auth-glyph"><div class="auth-glyph-dot"></div></div>
             <span class="auth-brand-name">Hermes Agent</span>
@@ -296,57 +360,60 @@
         <div class="auth-sub">Enter your <strong>GATEWAY_TOKEN</strong> to start chatting. Saved locally in your browser.</div>
         {% if space_host %}
         <div style="margin-bottom:14px;padding:10px 12px;background:var(--accent-dim);border:1px solid var(--accent-border);border-radius:var(--r-sm);font-size:0.8rem;color:var(--accent);">
-            For the best experience, open <a href="https://{{ space_host }}/agent" target="_blank" rel="noopener" style="font-weight:700;color:var(--accent);">{{ space_host }}/agent</a> directly.
+            Tip: open <a href="https://{{ space_host }}/agent" target="_blank" rel="noopener" style="font-weight:700;color:var(--accent);">{{ space_host }}/agent</a> in its own tab for best results.
         </div>
         {% endif %}
         <div class="auth-err" id="authErr" style="display:none;"></div>
-        <input class="auth-input" type="password" id="tokenInput" placeholder="GATEWAY_TOKEN" autofocus autocomplete="off">
-        <button class="btn primary" id="tokenSubmit" style="width:100%;justify-content:center;">Connect &rarr;</button>
+        <input class="auth-input" type="password" id="tokenInput" placeholder="GATEWAY_TOKEN" autocomplete="off">
+        <button class="btn primary" id="tokenSubmit" style="width:100%;justify-content:center;margin-top:4px;">Connect &rarr;</button>
     </div>
 </div>
+
+<!-- OVERLAY BACKDROP (mobile sidebar) -->
+<div class="cc-overlay" id="ccOverlay"></div>
 
 <!-- MAIN APP -->
 <div class="cc-root" id="ccRoot" style="display:none;">
 
     <!-- Sidebar -->
-    <aside class="cc-side">
+    <aside class="cc-side" id="ccSide">
         <div class="cc-side-logo">
             <div class="cc-side-glyph"><div class="cc-side-glyph-dot"></div></div>
             <span class="cc-side-name">Hermes Agent</span>
         </div>
 
-        <div class="cc-side-lbl">Navigation</div>
-        <div class="cc-side-item active" id="navChat">
-            <span class="cc-side-icon">&#128172;</span> Chat
+        <div class="cc-side-nav">
+            <div class="cc-side-lbl">Menu</div>
+            <div class="cc-side-item active">
+                <span class="cc-side-icon">&#128172;</span> Chat
+            </div>
+            <a class="cc-side-item" href="/terminal" target="_blank" rel="noopener">
+                <span class="cc-side-icon">&#62;_</span> Terminal
+            </a>
+            <a class="cc-side-item" href="/env-builder">
+                <span class="cc-side-icon">&#9881;</span> ENV Builder
+            </a>
+            <a class="cc-side-item" href="/">
+                <span class="cc-side-icon">&#8592;</span> Dashboard
+            </a>
         </div>
-        <a class="cc-side-item" href="/terminal" target="_blank" rel="noopener">
-            <span class="cc-side-icon">&#62;</span> Terminal
-        </a>
-        <a class="cc-side-item" href="/env-builder">
-            <span class="cc-side-icon">&#9881;</span> ENV Builder
-        </a>
-        <a class="cc-side-item" href="/">
-            <span class="cc-side-icon">&#8592;</span> Dashboard
-        </a>
-
-        <div class="cc-side-spacer"></div>
 
         <div class="cc-model-box">
-            <div class="cc-model-lbl">Model</div>
+            <div class="cc-model-lbl">Active model</div>
             <div class="cc-model-name" id="sideModelName">{{ model or 'loading…' }}</div>
         </div>
 
-        <div style="padding: 0 12px;">
+        <div style="padding: 0 12px 16px;">
             <button class="btn sm ghost danger" id="lockBtn" style="width:100%;justify-content:center;">
                 &#128274; Forget token
             </button>
         </div>
     </aside>
 
-    <!-- Main area -->
+    <!-- Chat area -->
     <div class="cc-main">
         <div class="cc-topbar">
-            <button class="btn sm ghost cc-menu-btn" id="menuBtn" style="margin-right:4px;">&#9776;</button>
+            <button class="cc-menu-btn" id="menuBtn" aria-label="Menu">&#9776;</button>
             <span class="cc-topbar-title">Chat</span>
             <button class="btn sm ghost" id="clearBtn">Clear</button>
         </div>
@@ -354,15 +421,15 @@
         <div class="cc-messages" id="messages">
             <div class="cc-empty" id="emptyState">
                 <div class="cc-empty-glyph"><div class="cc-empty-dot"></div></div>
-                <div class="cc-empty-title">What can I help you with?</div>
-                <div class="cc-empty-sub">Type a message below to start a conversation. Your API key is stored locally.</div>
+                <div class="cc-empty-title">What can I help with?</div>
+                <div class="cc-empty-sub">Type a message below. Your gateway token is saved locally.</div>
             </div>
         </div>
 
         <div class="cc-inputbar">
             <textarea class="cc-input" id="chatInput" rows="1"
-                placeholder="Message Hermes Agent&hellip;   (Enter to send &middot; Shift+Enter for new line)"></textarea>
-            <button class="btn primary" id="sendBtn">Send</button>
+                placeholder="Message…  (Enter to send, Shift+Enter for new line)"></textarea>
+            <button class="cc-send-btn" id="sendBtn">Send</button>
         </div>
     </div>
 
@@ -372,12 +439,13 @@
 (function () {
     var TOKEN_KEY = 'hermes_token';
     var history   = [];
-    var streaming = false;
+    var isBusy    = false;
     var model     = {{ model | tojson }};
 
-    /* elements */
     var ccAuth    = document.getElementById('ccAuth');
     var ccRoot    = document.getElementById('ccRoot');
+    var ccSide    = document.getElementById('ccSide');
+    var ccOverlay = document.getElementById('ccOverlay');
     var authErr   = document.getElementById('authErr');
     var tokenIn   = document.getElementById('tokenInput');
     var tokenBtn  = document.getElementById('tokenSubmit');
@@ -386,28 +454,44 @@
     var sendBtn   = document.getElementById('sendBtn');
     var clearBtn  = document.getElementById('clearBtn');
     var lockBtn   = document.getElementById('lockBtn');
+    var menuBtn   = document.getElementById('menuBtn');
     var emptyState= document.getElementById('emptyState');
     var sideModel = document.getElementById('sideModelName');
 
-    /* token helpers */
+    /* token */
     function gt()  { return localStorage.getItem(TOKEN_KEY) || ''; }
-    function st(t) { localStorage.setItem(TOKEN_KEY, t); }
+    function st(v) { localStorage.setItem(TOKEN_KEY, v); }
     function dt()  { localStorage.removeItem(TOKEN_KEY); }
 
+    /* views */
     function showAuth() {
         ccAuth.style.display = '';
         ccRoot.style.display = 'none';
-        tokenIn.value = '';
-        setTimeout(function(){ tokenIn.focus(); }, 60);
+        closeSidebar();
+        setTimeout(function(){ tokenIn.value=''; tokenIn.focus(); }, 60);
     }
-
     function showApp() {
         ccAuth.style.display = 'none';
         ccRoot.style.display = '';
         setTimeout(function(){ chatInput.focus(); }, 60);
     }
 
-    /* load model name from API */
+    /* sidebar toggle */
+    function openSidebar() {
+        ccSide.classList.add('open');
+        ccOverlay.classList.add('show');
+    }
+    function closeSidebar() {
+        ccSide.classList.remove('open');
+        ccOverlay.classList.remove('show');
+    }
+
+    menuBtn.addEventListener('click', function() {
+        ccSide.classList.contains('open') ? closeSidebar() : openSidebar();
+    });
+    ccOverlay.addEventListener('click', closeSidebar);
+
+    /* model info */
     function loadModel() {
         fetch('/api/status')
             .then(function(r){ return r.json(); })
@@ -421,8 +505,8 @@
             .catch(function(){});
     }
 
-    /* add a message bubble */
-    function addBubble(role, text, isStreaming) {
+    /* render bubble */
+    function addBubble(role, text, streaming) {
         if (emptyState) emptyState.style.display = 'none';
         var row = document.createElement('div');
         row.className = 'cc-bubble-row ' + role;
@@ -430,7 +514,7 @@
         lbl.className = 'cc-role';
         lbl.textContent = role === 'user' ? 'You' : 'Assistant';
         var bub = document.createElement('div');
-        bub.className = 'cc-bubble ' + role + (isStreaming ? ' streaming' : '');
+        bub.className = 'cc-bubble ' + role + (streaming ? ' streaming' : '');
         bub.textContent = text;
         row.appendChild(lbl);
         row.appendChild(bub);
@@ -439,24 +523,23 @@
         return bub;
     }
 
-    function appendText(bub, chunk) {
+    function appendChunk(bub, chunk) {
         bub.textContent += chunk;
         messagesEl.scrollTop = messagesEl.scrollHeight;
     }
-
     function finalise(bub) { bub.classList.remove('streaming'); }
 
-    function done() {
-        streaming = false;
+    function resetInput() {
+        isBusy = false;
         sendBtn.disabled = false;
         sendBtn.textContent = 'Send';
         chatInput.focus();
     }
 
-    /* send a message */
+    /* send message */
     function send(text) {
         text = text.trim();
-        if (!text || streaming) return;
+        if (!text || isBusy) return;
         var token = gt();
         if (!token) { showAuth(); return; }
 
@@ -464,13 +547,12 @@
         addBubble('user', text, false);
         chatInput.value = '';
         chatInput.style.height = '';
-
-        streaming = true;
+        isBusy = true;
         sendBtn.disabled = true;
         sendBtn.textContent = '…';
 
         var bub = addBubble('assistant', '', true);
-        var assistantText = '';
+        var out = '';
 
         fetch('/v1/chat/completions', {
             method: 'POST',
@@ -481,52 +563,51 @@
             body: JSON.stringify({ model: model || undefined, messages: history, stream: true })
         }).then(function(res) {
             if (res.status === 401) {
-                bub.textContent = '[Unauthorized — check your GATEWAY_TOKEN]';
-                finalise(bub); done(); return;
+                bub.textContent = '[Unauthorized — re-enter your GATEWAY_TOKEN]';
+                finalise(bub); resetInput(); return;
             }
             if (!res.ok || !res.body) {
                 return res.text().then(function(t) {
-                    bub.textContent = '[Error ' + res.status + (t ? ': ' + t.slice(0, 200) : '') + ']';
-                    finalise(bub); done();
+                    bub.textContent = '[Error ' + res.status + (t ? ': ' + t.slice(0,200) : '') + ']';
+                    finalise(bub); resetInput();
                 });
             }
-
             var reader  = res.body.getReader();
             var decoder = new TextDecoder();
             var buf = '';
 
             (function read() {
-                reader.read().then(function(result) {
-                    if (result.done) {
-                        if (!assistantText) bub.textContent = '[No response — check LLM_MODEL and LLM_API_KEY]';
-                        history.push({ role: 'assistant', content: assistantText });
-                        finalise(bub); done(); return;
+                reader.read().then(function(r) {
+                    if (r.done) {
+                        if (!out) bub.textContent = '[No response — check LLM_MODEL / LLM_API_KEY]';
+                        history.push({ role: 'assistant', content: out });
+                        finalise(bub); resetInput(); return;
                     }
-                    buf += decoder.decode(result.value, { stream: true });
+                    buf += decoder.decode(r.value, { stream: true });
                     var lines = buf.split('\n');
                     buf = lines.pop();
                     for (var i = 0; i < lines.length; i++) {
                         var line = lines[i].trim();
                         if (!line.startsWith('data:')) continue;
-                        var data = line.slice(5).trim();
-                        if (data === '[DONE]') continue;
+                        var d = line.slice(5).trim();
+                        if (d === '[DONE]') continue;
                         try {
-                            var obj = JSON.parse(data);
-                            if (obj.error) { bub.textContent = '[API error: ' + (obj.error.message || '') + ']'; continue; }
+                            var obj = JSON.parse(d);
+                            if (obj.error) { bub.textContent = '[API: ' + (obj.error.message||JSON.stringify(obj.error)) + ']'; continue; }
                             var delta = obj.choices && obj.choices[0] && obj.choices[0].delta;
-                            if (delta && delta.content) { assistantText += delta.content; appendText(bub, delta.content); }
+                            if (delta && delta.content) { out += delta.content; appendChunk(bub, delta.content); }
                         } catch(e) {}
                     }
                     read();
-                }).catch(function(){ finalise(bub); done(); });
+                }).catch(function(){ finalise(bub); resetInput(); });
             }());
-        }).catch(function(e) {
+        }).catch(function() {
             bub.textContent = '[Network error]';
-            finalise(bub); done();
+            finalise(bub); resetInput();
         });
     }
 
-    /* ── event listeners ── */
+    /* events */
     tokenBtn.addEventListener('click', function() {
         var t = tokenIn.value.trim();
         if (!t) return;
@@ -540,7 +621,7 @@
     });
     chatInput.addEventListener('input', function() {
         this.style.height = '';
-        this.style.height = Math.min(this.scrollHeight, 160) + 'px';
+        this.style.height = Math.min(this.scrollHeight, 140) + 'px';
     });
 
     clearBtn.addEventListener('click', function() {
@@ -550,10 +631,10 @@
     });
 
     lockBtn.addEventListener('click', function() {
-        if (confirm('Forget saved token and sign out?')) { dt(); showAuth(); }
+        if (confirm('Forget saved token?')) { dt(); showAuth(); }
     });
 
-    /* ── init ── */
+    /* init */
     loadModel();
     if (gt()) { showApp(); } else { showAuth(); }
 }());
