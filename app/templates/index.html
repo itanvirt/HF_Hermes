@@ -5,34 +5,151 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ title }}</title>
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* ── Dashboard-only layout ── */
+        .pg {
+            position: relative;
+            z-index: 1;
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 48px 20px 72px;
+        }
+
+        .pg-hero {
+            text-align: center;
+            margin-bottom: 36px;
+        }
+
+        .pg-glyph {
+            width: 48px; height: 48px;
+            border-radius: 14px;
+            background: var(--accent-dim);
+            border: 1px solid var(--accent-border);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 18px;
+        }
+
+        .pg-glyph-dot {
+            width: 16px; height: 16px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 18px var(--accent);
+        }
+
+        .pg-title {
+            font-size: clamp(1.6rem, 5vw, 2.2rem);
+            font-weight: 800;
+            letter-spacing: -.03em;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+
+        .pg-sub {
+            font-family: var(--mono);
+            font-size: 0.72rem;
+            letter-spacing: .18em;
+            text-transform: uppercase;
+            color: var(--text-2);
+        }
+
+        /* Action buttons */
+        .pg-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 14px;
+        }
+
+        .pg-actions .btn {
+            min-width: 130px;
+            justify-content: center;
+        }
+
+        /* Hint */
+        .pg-hint {
+            text-align: center;
+            font-size: 0.77rem;
+            color: var(--text-3);
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        /* Status section header */
+        .pg-status-hd {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+
+        .pg-status-title {
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: -.01em;
+        }
+
+        .pg-refresh {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            color: var(--text-2);
+        }
+
+        .pg-refresh-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        /* Auth hint */
+        .pg-auth-hint {
+            text-align: center;
+            margin-top: 28px;
+            font-size: 0.8rem;
+            color: var(--text-2);
+        }
+        .pg-auth-hint a { color: var(--accent); }
+    </style>
 </head>
 <body>
 
-<nav class="nav">
-    <div class="nav-brand">
-        <div class="nav-glyph"><div class="nav-glyph-dot"></div></div>
-        <span class="nav-name">{{ title }}</span>
-        <div class="nav-sep"></div>
-        <span class="nav-tag">{{ subtitle }}</span>
+<div class="pg">
+
+    <!-- Hero -->
+    <div class="pg-hero">
+        <div class="pg-glyph"><div class="pg-glyph-dot"></div></div>
+        <div class="pg-title">{{ title }}</div>
+        <div class="pg-sub">{{ subtitle }}</div>
     </div>
-    <div class="spacer"></div>
-    <div class="nav-actions">
-        <a class="btn sm" href="/agent" target="_blank" rel="noopener">Agent ↗</a>
-        <a class="btn sm" href="/terminal" target="_blank" rel="noopener">Terminal ↗</a>
+
+    <!-- Actions -->
+    <div class="pg-actions">
+        <a class="btn primary" href="/agent" target="_blank" rel="noopener">Open Agent &rarr;</a>
+        <a class="btn" href="/terminal" target="_blank" rel="noopener">Terminal</a>
         {% if authenticated %}
-        <a class="btn sm" href="/env-builder">ENV</a>
-        <a class="btn sm ghost" href="/logout">Logout</a>
+        <a class="btn" href="/env-builder">ENV Builder</a>
+        <a class="btn ghost" href="/logout">Logout</a>
         {% else %}
-        <a class="btn sm primary" href="/login?next=/env-builder">Login</a>
+        <a class="btn" href="/login?next=/env-builder">Login</a>
         {% endif %}
     </div>
-</nav>
 
-<main class="dash">
-    <div class="dash-head">
-        <div class="dash-title">Status</div>
-        <div class="dash-meta">
-            <div class="refresh-dot" id="refreshDot"></div>
+    <p class="pg-hint">
+        Open Agent and Terminal in a new tab from <code style="font-size:.9em;">*.hf.space</code>
+        &mdash; embedded iframes may block session cookies.
+    </p>
+
+    <!-- Status cards -->
+    <div class="pg-status-hd">
+        <div class="pg-status-title">Status</div>
+        <div class="pg-refresh">
+            <div class="pg-refresh-dot"></div>
             <span id="refreshLabel">live</span>
         </div>
     </div>
@@ -53,13 +170,9 @@
                 {% if status.gateway.protected %}<span class="pill info">Protected</span>{% endif %}
             </div>
             <div class="card-body" id="gw-via">
-                {% if status.gateway.online %}
-                {{ status.telegram.via }}
-                {% elif status.gateway.telegram_configured %}
-                Not running — check gateway logs
-                {% else %}
-                Set <strong>TELEGRAM_BOT_TOKEN</strong> to enable
-                {% endif %}
+                {% if status.gateway.online %}{{ status.telegram.via }}
+                {% elif status.gateway.telegram_configured %}Not running — check gateway logs
+                {% else %}Set <strong>TELEGRAM_BOT_TOKEN</strong> to enable{% endif %}
             </div>
         </div>
 
@@ -67,16 +180,11 @@
         <div class="card {% if status.model.configured %}ok{% else %}warn{% endif %}" id="card-model">
             <div class="card-lbl">Language Model</div>
             <div class="card-row">
-                {% if status.model.configured %}
-                <span class="pill ok">Ready</span>
-                {% else %}
-                <span class="pill warn">Not configured</span>
-                {% endif %}
+                {% if status.model.configured %}<span class="pill ok">Ready</span>
+                {% else %}<span class="pill warn">Not set</span>{% endif %}
                 <span class="tag">{{ status.model.provider }}</span>
             </div>
-            <div class="card-body">
-                <strong>{{ status.model.model }}</strong>
-            </div>
+            <div class="card-body"><strong>{{ status.model.model }}</strong></div>
         </div>
 
         <!-- Runtime -->
@@ -94,11 +202,8 @@
         <div class="card {% if status.telegram.configured %}ok{% else %}warn{% endif %}" id="card-telegram">
             <div class="card-lbl">Telegram</div>
             <div class="card-row">
-                {% if status.telegram.configured %}
-                <span class="pill ok">Configured</span>
-                {% else %}
-                <span class="pill warn">Not set</span>
-                {% endif %}
+                {% if status.telegram.configured %}<span class="pill ok">Configured</span>
+                {% else %}<span class="pill warn">Not set</span>{% endif %}
             </div>
             <div class="card-body" id="tg-via">{{ status.telegram.via }}</div>
         </div>
@@ -107,20 +212,15 @@
         <div class="card {% if status.backup.status == 'success' %}ok{% elif 'error' in status.backup.status %}err{% elif status.backup.status == 'not configured' %}warn{% else %}info{% endif %}" id="card-backup">
             <div class="card-lbl">State Backup</div>
             <div class="card-row">
-                {% if status.backup.status == 'success' %}
-                <span class="pill ok">Synced</span>
-                {% elif 'error' in status.backup.status %}
-                <span class="pill err">Error</span>
-                {% elif status.backup.status == 'not configured' %}
-                <span class="pill warn">No HF_TOKEN</span>
-                {% else %}
-                <span class="pill info">{{ status.backup.status }}</span>
-                {% endif %}
+                {% if status.backup.status == 'success' %}<span class="pill ok">Synced</span>
+                {% elif 'error' in status.backup.status %}<span class="pill err">Error</span>
+                {% elif status.backup.status == 'not configured' %}<span class="pill warn">No HF_TOKEN</span>
+                {% else %}<span class="pill info">{{ status.backup.status }}</span>{% endif %}
             </div>
             <div class="card-body">
                 {% if status.backup.repo %}<strong>{{ status.backup.repo }}</strong>{% endif %}
-                {% if status.backup.at %}<br>Last at {{ status.backup.at }} UTC{% endif %}
-                {% if not status.backup.repo %}Set <strong>HF_TOKEN</strong> to enable auto-backup{% endif %}
+                {% if status.backup.at %}<br>Last sync {{ status.backup.at }} UTC{% endif %}
+                {% if not status.backup.repo %}Set <strong>HF_TOKEN</strong> to enable{% endif %}
             </div>
         </div>
 
@@ -128,80 +228,73 @@
         <div class="card {% if status.keep_awake.configured %}ok{% else %}warn{% endif %}" id="card-keepawake">
             <div class="card-lbl">Keep Awake</div>
             <div class="card-row">
-                {% if status.keep_awake.configured %}
-                <span class="pill ok">Active</span>
-                {% else %}
-                <span class="pill warn">Pending</span>
-                {% endif %}
+                {% if status.keep_awake.configured %}<span class="pill ok">Active</span>
+                {% else %}<span class="pill warn">Pending</span>{% endif %}
             </div>
             <div class="card-body" id="ka-via">{{ status.keep_awake.via }}</div>
         </div>
 
     </div>
 
-    <div class="foot">
-        <span style="color:var(--text-3);font-size:0.75rem;">
-            Open Agent or Terminal in a new tab from <code>*.hf.space</code> — embedded iframes may block session cookies.
-        </span>
-        <br>
-        {% if owner %}<a href="https://huggingface.co/{{ owner }}">@{{ owner }}</a> · {% endif %}
+    {% if not authenticated %}
+    <div class="pg-auth-hint">
+        <a href="/login?next=/env-builder">Login</a> to access ENV Builder and manage configuration.
+    </div>
+    {% endif %}
+
+    <div class="foot" style="margin-top:40px;">
+        {% if owner %}<a href="https://huggingface.co/{{ owner }}">@{{ owner }}</a> &middot; {% endif %}
         <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">NousResearch/hermes-agent</a>
     </div>
-</main>
+
+</div>
 
 <script>
 (function () {
     var label = document.getElementById('refreshLabel');
 
     function applyStatus(s) {
-        var gwCard = document.getElementById('card-gateway');
-        if (gwCard) {
-            gwCard.className = 'card ' + (s.gateway.online ? 'ok' : s.gateway.telegram_configured ? 'err' : 'warn');
-            var via = document.getElementById('gw-via');
-            if (via) {
-                if (s.gateway.online) via.innerHTML = s.telegram.via;
-                else if (s.gateway.telegram_configured) via.innerHTML = 'Not running — check gateway logs';
-                else via.innerHTML = 'Set <strong>TELEGRAM_BOT_TOKEN</strong> to enable';
-            }
+        var c;
+        c = document.getElementById('card-gateway');
+        if (c) c.className = 'card ' + (s.gateway.online ? 'ok' : s.gateway.telegram_configured ? 'err' : 'warn');
+        var via = document.getElementById('gw-via');
+        if (via) {
+            if (s.gateway.online) via.innerHTML = s.telegram.via;
+            else if (s.gateway.telegram_configured) via.innerHTML = 'Not running — check gateway logs';
+            else via.innerHTML = 'Set <strong>TELEGRAM_BOT_TOKEN</strong> to enable';
         }
-        var mdCard = document.getElementById('card-model');
-        if (mdCard) mdCard.className = 'card ' + (s.model.configured ? 'ok' : 'warn');
+
+        c = document.getElementById('card-model');
+        if (c) c.className = 'card ' + (s.model.configured ? 'ok' : 'warn');
 
         var uptime = document.getElementById('rt-uptime');
         if (uptime) uptime.textContent = s.runtime.uptime;
 
-        var tgCard = document.getElementById('card-telegram');
-        if (tgCard) tgCard.className = 'card ' + (s.telegram.configured ? 'ok' : 'warn');
-        var tgVia = document.getElementById('tg-via');
-        if (tgVia) tgVia.textContent = s.telegram.via;
+        c = document.getElementById('card-telegram');
+        if (c) c.className = 'card ' + (s.telegram.configured ? 'ok' : 'warn');
+        var tgv = document.getElementById('tg-via');
+        if (tgv) tgv.textContent = s.telegram.via;
 
-        var bkCard = document.getElementById('card-backup');
-        if (bkCard) {
+        c = document.getElementById('card-backup');
+        if (c) {
             var st = s.backup.status;
-            bkCard.className = 'card ' + (
-                st === 'success' ? 'ok' :
-                st.indexOf('error') !== -1 ? 'err' :
-                st === 'not configured' ? 'warn' : 'info'
-            );
+            c.className = 'card ' + (st === 'success' ? 'ok' : st.indexOf('error') !== -1 ? 'err' : st === 'not configured' ? 'warn' : 'info');
         }
 
-        var kaCard = document.getElementById('card-keepawake');
-        if (kaCard) kaCard.className = 'card ' + (s.keep_awake.configured ? 'ok' : 'warn');
-        var kaVia = document.getElementById('ka-via');
-        if (kaVia) kaVia.textContent = s.keep_awake.via;
+        c = document.getElementById('card-keepawake');
+        if (c) c.className = 'card ' + (s.keep_awake.configured ? 'ok' : 'warn');
+        var kav = document.getElementById('ka-via');
+        if (kav) kav.textContent = s.keep_awake.via;
     }
 
     function tick() {
         fetch('/api/status')
             .then(function (r) { return r.json(); })
-            .then(function (data) {
-                applyStatus(data);
-                var now = new Date();
-                if (label) label.textContent = 'updated ' + now.toLocaleTimeString();
+            .then(function (d) {
+                applyStatus(d);
+                if (label) label.textContent = 'updated ' + new Date().toLocaleTimeString();
             })
-            .catch(function () {
-                if (label) label.textContent = 'offline';
-            });
+            .catch(function () { if (label) label.textContent = 'offline'; });
     }
 
     setInterval(tick, 30000);
