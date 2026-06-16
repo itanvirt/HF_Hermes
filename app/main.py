@@ -129,6 +129,17 @@ def _active_llm_upstream() -> tuple[str, str]:
     return base, key
 
 
+def _read_soul_md() -> str:
+    """Return the active content of ~/.hermes/SOUL.md, stripping template comments."""
+    try:
+        text = (HERMES_HOME / "SOUL.md").read_text()
+        # Strip the HTML comment block that ships as template instructions
+        text = re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
+        return text.strip()
+    except Exception:
+        return ""
+
+
 app = FastAPI(title="Hermes Agent")
 app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
@@ -251,6 +262,7 @@ async def agent_page(request: Request):
             "request": request,
             "model": data["model"]["model"],
             "space_host": SPACE_HOST,
+            "system_prompt": _read_soul_md(),
         },
     )
 

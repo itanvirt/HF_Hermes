@@ -141,4 +141,19 @@ if command -v hermes >/dev/null 2>&1 && [ -n "${TELEGRAM_API_BASE_URL:-}" ]; the
             >>/home/user/app/data/hermes-setup.log
 fi
 
+# --- preserve SOUL.md across restarts ------------------------------------
+# If SOUL.md is missing or contains only template comments (no real content),
+# restore it from the bundled default so the persona survives cold starts
+# before the first backup/restore cycle runs.
+SOUL_FILE="$HERMES_HOME/SOUL.md"
+SOUL_DEFAULT="/home/user/app/scripts/default_soul.md"
+if [ -f "$SOUL_DEFAULT" ]; then
+    # Check if soul file has real content (not just template comments)
+    SOUL_ACTIVE=$(sed 's/<!--.*-->//g' "$SOUL_FILE" 2>/dev/null | tr -d '[:space:]')
+    if [ -z "$SOUL_ACTIVE" ] && [ ! -f "$SOUL_FILE" ]; then
+        cp "$SOUL_DEFAULT" "$SOUL_FILE"
+        echo "[configure_hermes] seeded SOUL.md from default." >>/home/user/app/data/hermes-setup.log
+    fi
+fi
+
 echo "[configure_hermes] done."

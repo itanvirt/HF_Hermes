@@ -476,11 +476,12 @@
 
 <script>
 (function () {
-    var TOKEN_KEY   = 'hermes_token';
-    var HISTORY_KEY = 'hermes_chat_history';
-    var history     = [];
-    var isBusy      = false;
-    var model       = {{ model | tojson }};
+    var TOKEN_KEY    = 'hermes_token';
+    var HISTORY_KEY  = 'hermes_chat_history';
+    var SYSTEM_PROMPT = {{ system_prompt | tojson }};
+    var history      = [];
+    var isBusy       = false;
+    var model        = {{ model | tojson }};
 
     var ccAuth    = document.getElementById('ccAuth');
     var ccRoot    = document.getElementById('ccRoot');
@@ -504,11 +505,17 @@
     function dt()  { localStorage.removeItem(TOKEN_KEY); }
 
     /* history persistence */
+    function sysMsg() { return SYSTEM_PROMPT ? [{ role: 'system', content: SYSTEM_PROMPT }] : []; }
     function saveHistory() {
         try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch(e) {}
     }
     function loadHistory() {
-        try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch(e) { return []; }
+        try {
+            var saved = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+            // Always use current SOUL.md as the system message
+            var msgs = saved.filter(function(m) { return m.role !== 'system'; });
+            return sysMsg().concat(msgs);
+        } catch(e) { return sysMsg(); }
     }
 
     /* views */
@@ -683,7 +690,7 @@
     });
 
     clearBtn.addEventListener('click', function() {
-        history = [];
+        history = sysMsg();
         localStorage.removeItem(HISTORY_KEY);
         messagesEl.innerHTML = '';
         if (emptyState) { emptyState.style.display = ''; messagesEl.appendChild(emptyState); }
@@ -697,15 +704,12 @@
     loadModel();
     if (gt()) {
         showApp();
-        // Restore previous conversation from localStorage
         history = loadHistory();
-        if (history.length > 0) {
-            history.forEach(function(msg) {
-                if (msg.role === 'user' || msg.role === 'assistant') {
-                    addBubble(msg.role, msg.content, false);
-                }
-            });
-        }
+        history.forEach(function(msg) {
+            if (msg.role === 'user' || msg.role === 'assistant') {
+                addBubble(msg.role, msg.content, false);
+            }
+        });
     } else { showAuth(); }
 }());
 </script>
