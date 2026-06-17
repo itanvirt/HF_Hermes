@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from huggingface_hub import HfApi, upload_folder
+from huggingface_hub.utils import HfHubHTTPError
 
 from app.status import BACKUP_STATE_FILE
 
@@ -93,6 +94,19 @@ def _read_fingerprint() -> dict:
 def _write_fingerprint(data: dict) -> None:
     FINGERPRINT_FILE.parent.mkdir(parents=True, exist_ok=True)
     FINGERPRINT_FILE.write_text(json.dumps(data))
+
+
+def _describe_error(exc: Exception) -> str:
+    """Turn the common HF_TOKEN misconfigurations into an actionable message
+    instead of a raw SDK exception, since this string is what duplicators see
+    on the dashboard's State Backup card."""
+    if isinstance(exc, HfHubHTTPError) and exc.response is not None:
+        code = exc.response.status_code
+        if code == 401:
+            return "HF_TOKEN is invalid or expired (401) — generate a new one at https://huggingface.co/settings/tokens"
+        if code == 403:
+            return "HF_TOKEN lacks write access (403) — generate a token with write permission at https://huggingface.co/settings/tokens"
+    return str(exc)
 
 
 def _dataset_repo_id(api: HfApi, token: str) -> str:
@@ -282,7 +296,7 @@ def run_backup() -> dict:
         }
     except Exception as exc:  # noqa: BLE001 - surface any failure on the dashboard
         logger.exception("backup failed")
-        result = {"status": f"error: {exc}", "repo": None, "at": None}
+        result = {"status": f"error: {_describe_error(exc)}", "repo": None, "at": None}
 
     _write_state(result)
     return result

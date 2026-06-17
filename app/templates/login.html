@@ -41,5 +41,23 @@
             </form>
         </div>
     </div>
+
+    {% if space_host %}
+    <script>
+    (function () {
+        // Embedded iframes (e.g. the huggingface.co Space preview) are a
+        // third-party context to most browsers, which silently drop the
+        // session cookie /login sets. Escape to a top-level navigation on
+        // the Space's own origin so the cookie sticks; the manual "Open in
+        // new tab" link above is the fallback if this is blocked (e.g. a
+        // sandboxed embed without allow-top-navigation).
+        try {
+            if (window.top !== window.self) {
+                window.top.location.href = "https://{{ space_host }}" + window.location.pathname + window.location.search;
+            }
+        } catch (e) {}
+    }());
+    </script>
+    {% endif %}
 </body>
 </html>

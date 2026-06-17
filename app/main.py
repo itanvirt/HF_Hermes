@@ -199,6 +199,7 @@ async def index(request: Request):
             "status": data,
             "authenticated": auth.verify_session_cookie(request.cookies.get(auth.COOKIE_NAME)),
             "owner": os.environ.get("SPACE_OWNER", ""),
+            "space_host": SPACE_HOST,
         },
     )
 

@@ -53,3 +53,16 @@ Space.
 - **Backup interval had no jitter.** If you duplicate this Space many times
   around the same moment, every copy's sync timer would tick in lockstep.
   Added +/-10% jitter via APScheduler's native `jitter` parameter.
+- **Login could silently fail when the dashboard is viewed inside the
+  huggingface.co embed iframe.** Browsers' third-party cookie restrictions
+  drop the session cookie `/login` sets when the page is embedded, with no
+  obvious symptom beyond "login doesn't stick." `login.html` now detects
+  `window.top !== window.self` and auto-redirects the top-level browsing
+  context to the Space's own origin before submitting; the existing manual
+  "Open in new tab" link stays as a fallback if that's blocked (e.g. a
+  sandboxed embed).
+- **Backup errors just showed the raw SDK exception** (e.g. `error: 401
+  Client Error...`) on the dashboard, which didn't tell a duplicator what to
+  actually do. `app/backup.py` now recognizes `HfHubHTTPError` 401/403
+  responses and surfaces an actionable message (token invalid/expired vs.
+  missing write scope) with a direct link to mint a new one.
