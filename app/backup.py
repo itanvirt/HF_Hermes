@@ -29,6 +29,10 @@ SYNC_INTERVAL_SECS = (
 # Files that must never leave the container.
 EXCLUDE_NAMES = {".env", "credentials.json", "secrets.json"}
 
+# How many tarball backups to keep; older ones are deleted (and history
+# squashed) so the dataset doesn't grow unbounded across restarts.
+RETENTION_COUNT = int(os.environ.get("BACKUP_RETENTION_COUNT", "5"))
+
 # Priority files saved as plain files in the dataset (not just in the tarball)
 # so they can be restored immediately on cold start without waiting for a tarball.
 PRIORITY_FILES = [
@@ -55,6 +59,29 @@ def _tar_filter(tarinfo: tarfile.TarInfo) -> tarfile.TarInfo | None:
     if Path(tarinfo.name).name in EXCLUDE_NAMES:
         return None
     return tarinfo
+
+
+def _prune_old_backups(api: HfApi, repo_id: str, token: str) -> None:
+    try:
+        all_files = list(api.list_repo_files(repo_id=repo_id, repo_type="dataset", token=token))
+    except Exception:
+        return
+    backups = sorted(f for f in all_files if f.startswith("backups/") and f.endswith(".tar.gz"))
+    stale = backups[:-RETENTION_COUNT] if len(backups) > RETENTION_COUNT else []
+    if not stale:
+        return
+    for old in stale:
+        try:
+            api.delete_file(path_in_repo=old, repo_id=repo_id, repo_type="dataset", token=token)
+        except Exception:
+            logger.warning("could not delete stale backup %s", old, exc_info=True)
+    # Deleting a file only removes it from the latest commit tree -- the old
+    # blob stays in git history (and counts toward dataset storage) until the
+    # history is squashed.
+    try:
+        api.super_squash_history(repo_id=repo_id, repo_type="dataset", token=token)
+    except Exception:
+        logger.warning("history squash failed", exc_info=True)
 
 
 def run_backup() -> dict:
@@ -120,6 +147,8 @@ def run_backup() -> dict:
                     )
                 except Exception:
                     pass  # non-fatal
+
+        _prune_old_backups(api, repo_id, token)
 
         result = {
             "status": "success",
