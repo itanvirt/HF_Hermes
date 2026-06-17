@@ -61,27 +61,39 @@ def _tar_filter(tarinfo: tarfile.TarInfo) -> tarfile.TarInfo | None:
     return tarinfo
 
 
-def _prune_old_backups(api: HfApi, repo_id: str, token: str) -> None:
+def _prune_old_backups(api: HfApi, repo_id: str, token: str) -> dict:
     try:
         all_files = list(api.list_repo_files(repo_id=repo_id, repo_type="dataset", token=token))
     except Exception:
-        return
+        logger.warning("could not list repo files for pruning", exc_info=True)
+        return {"pruned": 0, "error": "list failed"}
     backups = sorted(f for f in all_files if f.startswith("backups/") and f.endswith(".tar.gz"))
     stale = backups[:-RETENTION_COUNT] if len(backups) > RETENTION_COUNT else []
     if not stale:
-        return
-    for old in stale:
-        try:
-            api.delete_file(path_in_repo=old, repo_id=repo_id, repo_type="dataset", token=token)
-        except Exception:
-            logger.warning("could not delete stale backup %s", old, exc_info=True)
-    # Deleting a file only removes it from the latest commit tree -- the old
-    # blob stays in git history (and counts toward dataset storage) until the
+        return {"pruned": 0}
+    # Delete all stale files in a single commit -- doing this one file at a
+    # time (one commit per file) is far too slow / rate-limit-prone once
+    # hundreds or thousands of backups have accumulated.
+    try:
+        api.delete_files(
+            repo_id=repo_id,
+            repo_type="dataset",
+            delete_patterns=stale,
+            token=token,
+            commit_message=f"Prune {len(stale)} old backup(s)",
+        )
+    except Exception:
+        logger.warning("could not delete stale backups", exc_info=True)
+        return {"pruned": 0, "error": "delete failed"}
+    # Deleting files only removes them from the latest commit tree -- the old
+    # blobs stay in git history (and count toward dataset storage) until the
     # history is squashed.
     try:
         api.super_squash_history(repo_id=repo_id, repo_type="dataset", token=token)
     except Exception:
         logger.warning("history squash failed", exc_info=True)
+        return {"pruned": len(stale), "error": "squash failed"}
+    return {"pruned": len(stale)}
 
 
 def run_backup() -> dict:
@@ -148,14 +160,17 @@ def run_backup() -> dict:
                 except Exception:
                     pass  # non-fatal
 
-        _prune_old_backups(api, repo_id, token)
+        prune_result = _prune_old_backups(api, repo_id, token)
 
         result = {
             "status": "success",
             "repo": repo_id,
             "path": remote_path,
             "at": datetime.now(timezone.utc).strftime("%H:%M:%S"),
+            "pruned": prune_result.get("pruned", 0),
         }
+        if prune_result.get("error"):
+            result["prune_error"] = prune_result["error"]
     except Exception as exc:  # noqa: BLE001 - surface any failure on the dashboard
         logger.exception("backup failed")
         result = {"status": f"error: {exc}", "repo": None, "at": None}

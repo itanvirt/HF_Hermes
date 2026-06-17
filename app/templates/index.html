@@ -220,6 +220,8 @@
             <div class="card-body">
                 {% if status.backup.repo %}<strong>{{ status.backup.repo }}</strong>{% endif %}
                 {% if status.backup.at %}<br>Last sync {{ status.backup.at }} UTC{% endif %}
+                {% if status.backup.pruned %}<br>Pruned {{ status.backup.pruned }} old backup(s){% endif %}
+                {% if status.backup.prune_error %}<br><span class="pill warn">Prune issue: {{ status.backup.prune_error }}</span>{% endif %}
                 {% if not status.backup.repo %}Set <strong>HF_TOKEN</strong> to enable{% endif %}
             </div>
         </div>
