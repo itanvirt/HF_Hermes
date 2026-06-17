@@ -98,15 +98,20 @@ No credit card and no programming experience is required for any of the above.
 
 ### Step 1: Create the Hugging Face Space
 
+The easiest way: click the green **Duplicate this Space** button at the top
+of this page. It copies everything for you — Docker config, free CPU
+hardware, the list of secrets you'll need — and skips straight to Step 2.
+
+<details>
+<summary>Prefer to set it up from scratch instead?</summary>
+
 1. Go to [huggingface.co/new-space](https://huggingface.co/new-space).
 2. Pick a name for your Space.
 3. Under **Select the Space SDK**, choose **Docker**.
 4. Under **Space hardware**, choose the free **CPU basic** tier.
 5. Click **Create Space**.
 
-> Easier option: instead of creating a blank Space, click the green
-> **Duplicate this Space** button at the top of this page — it copies
-> everything for you and skips straight to Step 2.
+</details>
 
 ### Step 2: Collect your secrets
 
