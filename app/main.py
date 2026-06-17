@@ -198,9 +198,6 @@ async def index(request: Request):
             "subtitle": "SELF-HOSTED · HERMES AGENT",
             "status": data,
             "authenticated": auth.verify_session_cookie(request.cookies.get(auth.COOKIE_NAME)),
-            # SPACE_AUTHOR_NAME is auto-injected by HF Spaces (no secret to
-            # set); SPACE_OWNER is kept as a manual override for local dev.
-            "owner": os.environ.get("SPACE_OWNER") or os.environ.get("SPACE_AUTHOR_NAME", ""),
             "space_host": SPACE_HOST,
         },
     )

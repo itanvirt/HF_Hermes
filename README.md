@@ -355,4 +355,5 @@ your Space on every push to `main`:
 
 ---
 
-Built on [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent).
+Developed by [Tanvir Tuhin](https://linkedin.com/in/itanvirtuhin) · built on
+[NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent).
