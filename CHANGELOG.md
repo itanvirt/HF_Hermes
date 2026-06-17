@@ -39,3 +39,17 @@ Space.
   scripts now check and mirror all observed candidate paths
   (`~/.hermes/SOUL.md`, `~/.hermes/workspace/SOUL.md`, `~/SOUL.md`) so the
   persona survives regardless of which one the agent writes to.
+- **A redeploy/restart could lose up to `SYNC_INTERVAL` of state.** Backups
+  only ran on the periodic timer, so a `docker stop` (e.g. pushing a new
+  image, restarting the Space) skipped straight to killing the container
+  with no final sync. `scripts/entrypoint.sh` now traps `SIGTERM`/`SIGINT`
+  and runs one last backup before letting supervisord stop its children —
+  this requires *not* `exec`-ing supervisord (that would replace the trapping
+  shell), so it now runs as a background child that the script `wait`s on
+  instead. `scripts/hermes_gateway.sh` also syncs immediately whenever the
+  gateway process exits/restarts, instead of waiting for the next tick.
+- **No `.dockerignore`.** Every build/push sent the whole repo, including
+  `.git/` history, into the Docker build context. Added one.
+- **Backup interval had no jitter.** If you duplicate this Space many times
+  around the same moment, every copy's sync timer would tick in lockstep.
+  Added +/-10% jitter via APScheduler's native `jitter` parameter.

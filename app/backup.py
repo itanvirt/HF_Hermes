@@ -293,6 +293,9 @@ def start_scheduler(scheduler) -> None:
         run_backup,
         "interval",
         seconds=SYNC_INTERVAL_SECS,
+        # +/-10% jitter so a duplicated Space doesn't line up its sync tick
+        # with everyone else who duplicated at the same moment.
+        jitter=SYNC_INTERVAL_SECS * 0.1,
         next_run_time=datetime.now(timezone.utc),
         id="hermes-backup",
         replace_existing=True,

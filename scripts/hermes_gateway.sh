@@ -41,6 +41,7 @@ while true; do
     code=$?
     restarts=$((restarts + 1))
     echo "[hermes-gateway] exited (code $code, restart #${restarts})"
+    python3 -c "from app.backup import run_backup; print('[hermes-gateway] sync result:', run_backup())" 2>&1 || true
     _notify "restart"
     if [ "$MAX_RESTARTS" -gt 0 ] && [ "$restarts" -ge "$MAX_RESTARTS" ]; then
         echo "[hermes-gateway] max restarts ($MAX_RESTARTS) reached; exiting."
