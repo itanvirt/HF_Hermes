@@ -99,9 +99,10 @@ comma-separated list — the first key is promoted to the active singular var au
 | `STARTUP_PIP_PACKAGES` | — | Space-separated pip packages to install on every boot. |
 | `STARTUP_NPM_PACKAGES` | — | Space-separated npm packages to install on every boot. |
 | `STARTUP_RUN` | — | Bash commands to run on every boot (use `STARTUP_RUN_BASE64` for multi-line). |
-| `SYNC_INTERVAL` | `600` | Backup frequency in seconds. |
+| `SYNC_INTERVAL` | `600` | Backup check frequency in seconds. A tarball is only built and uploaded when something actually changed since the last check. |
 | `BACKUP_DATASET_NAME` | `hermes-backup` | Dataset name for backups (owner is auto-detected from `HF_TOKEN`). |
 | `BACKUP_RETENTION_COUNT` | `5` | Number of tarball backups to keep; older ones are deleted (and dataset history squashed) so storage doesn't grow unbounded. |
+| `SYNC_MAX_FILE_BYTES` | `52428800` (50MB) | Skip any single file larger than this when backing up, so one oversized cache/log file can't bloat every backup. |
 | `CLOUDFLARE_ACCOUNT_ID` | — | Your Cloudflare account ID (Cloudflare dashboard → Workers & Pages → right sidebar). Required for the keep-awake Worker to deploy. The container will try to auto-detect it from your token, but setting it explicitly is more reliable. |
 | `CLOUDFLARE_KEEPALIVE_ENABLED` | `true` | Set to `false` to deploy the Worker (for Telegram proxy) without the keep-awake cron. |
 | `GATEWAY_RESTART_DELAY` | `5` | Seconds to wait between gateway restarts. |
