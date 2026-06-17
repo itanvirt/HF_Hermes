@@ -66,3 +66,16 @@ Space.
   actually do. `app/backup.py` now recognizes `HfHubHTTPError` 401/403
   responses and surfaces an actionable message (token invalid/expired vs.
   missing write scope) with a direct link to mint a new one.
+- **The footer's "@owner" credit link silently never rendered.** It read a
+  `SPACE_OWNER` env var that isn't a real thing — Hugging Face Spaces
+  auto-injects `SPACE_AUTHOR_NAME` instead, and nothing told duplicators to
+  set `SPACE_OWNER` themselves. `app/main.py` now reads `SPACE_AUTHOR_NAME`
+  (falling back to `SPACE_OWNER` for anyone who'd set it manually), so the
+  link works out of the box with zero configuration.
+- **`hermes config set` had no retry and a swallowed-failure bug.**
+  `scripts/configure_hermes.sh` chained the `model.default` and
+  `model.provider` calls with `;` inside a `{ }` group, so the group's exit
+  code reflected only the second call — a failed first call went unnoticed
+  and unlogged. Also added 3x retry with backoff, since hermes may still be
+  settling right after the fallback install a few lines above; reduces how
+  often first boot needs a manual "finish via Terminal" fix.

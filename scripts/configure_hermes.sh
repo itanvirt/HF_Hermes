@@ -123,21 +123,33 @@ chmod 600 "$HERMES_HOME/.env"
 # `hermes config set` writes non-secret settings to ~/.hermes/config.yaml.
 # Best-effort: logs failures so the operator can finish configuration from
 # the in-browser terminal.
+#
+# Retries a few times since hermes may still be settling right after the
+# fallback install above; also makes failure detection correct - chaining
+# the two `config set` calls with `;` (as before) reported success based on
+# the second call's exit code alone, silently swallowing a failure of the
+# first.
+_hermes_config_set() {
+    local attempt
+    for attempt in 1 2 3; do
+        if hermes config set "$@" >>/home/user/app/data/hermes-setup.log 2>&1; then
+            return 0
+        fi
+        sleep 2
+    done
+    return 1
+}
+
 if command -v hermes >/dev/null 2>&1 && [ -n "${LLM_MODEL:-}" ]; then
-    {
-        hermes config set model.default "${LLM_MODEL}"
-        hermes config set model.provider "${HERMES_PROVIDER}"
-    } >/home/user/app/data/hermes-setup.log 2>&1 || \
-        echo "[configure_hermes] 'hermes config set' did not complete; configure manually via the in-browser terminal." \
+    _hermes_config_set model.default "${LLM_MODEL}" && _hermes_config_set model.provider "${HERMES_PROVIDER}" || \
+        echo "[configure_hermes] 'hermes config set' did not complete after retries; configure manually via the in-browser terminal." \
             >>/home/user/app/data/hermes-setup.log
 fi
 
 if command -v hermes >/dev/null 2>&1 && [ -n "${TELEGRAM_API_BASE_URL:-}" ]; then
-    {
-        hermes config set platforms.telegram.extra.base_url "${TELEGRAM_API_BASE_URL}"
-        hermes config set platforms.telegram.extra.base_file_url "${TELEGRAM_API_FILE_BASE_URL}"
-    } >>/home/user/app/data/hermes-setup.log 2>&1 || \
-        echo "[configure_hermes] 'hermes config set' for the Telegram proxy did not complete; configure manually via the in-browser terminal." \
+    _hermes_config_set platforms.telegram.extra.base_url "${TELEGRAM_API_BASE_URL}" && \
+        _hermes_config_set platforms.telegram.extra.base_file_url "${TELEGRAM_API_FILE_BASE_URL}" || \
+        echo "[configure_hermes] 'hermes config set' for the Telegram proxy did not complete after retries; configure manually via the in-browser terminal." \
             >>/home/user/app/data/hermes-setup.log
 fi
 
