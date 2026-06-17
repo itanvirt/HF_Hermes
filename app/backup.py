@@ -37,9 +37,13 @@ SYNC_INTERVAL_SECS = (
 # Files that must never leave the container.
 EXCLUDE_NAMES = {".env", "credentials.json", "secrets.json"}
 
-# Directories that are either reproducible (caches, venvs) or not worth
-# the storage (logs, vcs metadata) -- skip them at any depth.
-EXCLUDE_DIR_NAMES = {".cache", ".git", ".npm", ".venv", "__pycache__", "node_modules", "venv", "logs"}
+# Directories that are either reproducible (caches, venvs, the installed
+# agent itself) or not worth the storage (logs, vcs metadata) -- skip them
+# at any depth. "hermes-agent" is the install dir install_hermes.sh creates
+# under HERMES_HOME; excluding it whole (not just its venv/ subdir) keeps it
+# out of the backup entirely so restore_hermes.sh never replaces a working
+# install with an incomplete one (see restore_hermes.sh's SKIP_NAMES).
+EXCLUDE_DIR_NAMES = {".cache", ".git", ".npm", ".venv", "__pycache__", "node_modules", "venv", "logs", "hermes-agent"}
 
 # SQLite working files; only the *.db itself is needed for a consistent restore.
 EXCLUDE_FILE_SUFFIXES = (".db-shm", ".db-wal", ".db-journal")

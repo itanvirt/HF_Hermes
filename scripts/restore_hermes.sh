@@ -43,8 +43,12 @@ repo_id = os.environ.get("BACKUP_DATASET_REPO", f"{who['name']}/{name}")
 
 # Files that never leave the container, plus artifacts from the previous
 # tarball-based backup scheme (a dataset that predates this change may still
-# have a top-level "backups/" or "priority/" dir from that era).
-SKIP_NAMES = {".env", "credentials.json", "secrets.json", ".gitattributes", "backups", "priority"}
+# have a top-level "backups/" or "priority/" dir from that era). "hermes-agent"
+# is skipped too: it's the installed agent + venv, excluded from backup as
+# reproducible install state -- a dataset created before that exclusion may
+# still have a partial copy (missing venv/) that would otherwise clobber a
+# working local install with a broken one.
+SKIP_NAMES = {".env", "credentials.json", "secrets.json", ".gitattributes", "backups", "priority", "hermes-agent"}
 
 try:
     with tempfile.TemporaryDirectory() as tmpdir:

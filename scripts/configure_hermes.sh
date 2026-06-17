@@ -7,9 +7,11 @@ HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 mkdir -p "$HERMES_HOME"
 
 # Re-install if the build-time install didn't complete (e.g. installer
-# needed network access that wasn't available during image build).
-if ! command -v hermes >/dev/null 2>&1; then
-    echo "[configure_hermes] hermes binary not found, retrying install..."
+# needed network access that wasn't available during image build), or if
+# hermes is on PATH but its venv is gone/broken (e.g. wiped by an old
+# restore_hermes.sh backup that predates excluding hermes-agent/ from sync).
+if ! command -v hermes >/dev/null 2>&1 || ! hermes --version >/dev/null 2>&1; then
+    echo "[configure_hermes] hermes binary missing or broken, (re)installing..."
     bash "$(dirname "$0")/install_hermes.sh" || true
 fi
 

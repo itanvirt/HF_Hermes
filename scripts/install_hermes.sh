@@ -3,9 +3,12 @@
 # the project's official installer. Safe to re-run.
 set -uo pipefail
 
-if command -v hermes >/dev/null 2>&1; then
+if command -v hermes >/dev/null 2>&1 && hermes --version >/dev/null 2>&1; then
     echo "Hermes Agent already installed: $(command -v hermes)"
     exit 0
+fi
+if command -v hermes >/dev/null 2>&1; then
+    echo "hermes is on PATH but failed to run (broken venv?) -- reinstalling."
 fi
 
 echo "Installing Hermes Agent..."
