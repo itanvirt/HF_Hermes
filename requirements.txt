@@ -6,3 +6,6 @@ apscheduler==3.10.4
 huggingface_hub==0.25.1
 python-multipart==0.0.9
 itsdangerous==2.2.0
+websockets>=12,<14
+jupyterlab>=4.0,<5
+jupyter-server-terminals>=0.5,<1

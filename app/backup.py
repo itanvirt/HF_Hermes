@@ -1,11 +1,11 @@
 """Mirrors Hermes Agent state into a private Hugging Face dataset repo
 (<your-username>/hermes-backup) — one file per file, no tarball.
 
-Ported from HuggingMes's hermes-sync.py: `upload_folder`/`snapshot_download`
-let huggingface_hub diff against the repo and only transfer files that
-actually changed, so the dataset's working tree stays bounded to the size of
-~/.hermes itself instead of accumulating a brand-new full archive every
-cycle (which is what grew our previous tarball-based backup to 83.9GB).
+`upload_folder`/`snapshot_download` let huggingface_hub diff against the
+repo and only transfer files that actually changed, so the dataset's
+working tree stays bounded to the size of ~/.hermes itself instead of
+accumulating a brand-new full archive every cycle (which is what grew our
+previous tarball-based backup to 83.9GB).
 """
 import hashlib
 import json
@@ -56,7 +56,7 @@ SYNC_MAX_FILE_BYTES = int(os.environ.get("SYNC_MAX_FILE_BYTES", str(50 * 1024 * 
 # every cycle; only when it changes do we pay for a full SHA-256 content
 # hash, and only when *that* also differs do we actually snapshot + upload.
 # Catches "marker changed but content didn't" (e.g. a touch) without paying
-# for an upload. Mirrors HuggingMes's metadata_marker()/fingerprint_dir().
+# for an upload.
 FINGERPRINT_FILE = Path(
     os.environ.get("BACKUP_FINGERPRINT_FILE", str(BACKUP_STATE_FILE.parent / "backup_fingerprint.json"))
 )

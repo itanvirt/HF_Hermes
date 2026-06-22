@@ -24,9 +24,9 @@ mkdir -p /home/user/app/data
 # Wraps apt/apt-get/pip/pip3/npm/hermes inside the in-browser Terminal so
 # that anything you install interactively gets appended to data/startup.sh
 # and replayed automatically on the next boot - no need to pre-declare
-# packages in STARTUP_*_PACKAGES beforehand. Ported from HuggingMes's
-# start.sh. Rewritten (not just appended) on every boot so wrapper code
-# changes take effect after an image rebuild without leaving stale copies.
+# packages in STARTUP_*_PACKAGES beforehand. Rewritten (not just appended)
+# on every boot so wrapper code changes take effect after an image rebuild
+# without leaving stale copies.
 BASHRC_FILE="$HOME/.bashrc"
 touch "$BASHRC_FILE"
 sed -i '/^# >>> hermes shell-capture/,/^# <<< hermes shell-capture/d' "$BASHRC_FILE"

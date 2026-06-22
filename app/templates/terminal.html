@@ -6,11 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ page_title }} · Hermes Agent</title>
     <link rel="stylesheet" href="/static/style.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
     <style>
-        #terminal { height: 100%; }
-        .xterm { height: 100%; }
-        .xterm-viewport { overflow-y: hidden !important; }
+        .term-area { padding: 0; }
+        #jupyterFrame { width: 100%; height: 100%; border: 0; display: block; }
     </style>
 </head>
 <body class="term-page">
@@ -24,50 +22,7 @@
         <a class="btn sm ghost" href="/logout" style="text-decoration:none;">Logout</a>
     </div>
     <div class="term-area" id="termWrap">
-        <div id="terminal"></div>
+        <iframe id="jupyterFrame" src="/jupyter/lab" title="Terminal" allow="clipboard-read; clipboard-write"></iframe>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
-    <script>
-        var term = new Terminal({
-            cursorBlink: true,
-            theme: {
-                background: '#08090e',
-                foreground: '#dde5f8',
-                cursor:     '#818cf8',
-                selectionBackground: 'rgba(129,140,248,.25)'
-            }
-        });
-        var fitAddon = new FitAddon.FitAddon();
-        term.loadAddon(fitAddon);
-        term.open(document.getElementById('terminal'));
-        fitAddon.fit();
-
-        var proto = location.protocol === 'https:' ? 'wss' : 'ws';
-        var ws = new WebSocket(proto + '://' + location.host + '{{ ws_path }}');
-        ws.binaryType = 'arraybuffer';
-
-        ws.onopen = function () {
-            fitAddon.fit();
-            ws.send('\x01RESIZE:' + term.rows + ',' + term.cols);
-        };
-        ws.onmessage = function (ev) {
-            if (typeof ev.data === 'string') term.write(ev.data);
-            else term.write(new Uint8Array(ev.data));
-        };
-        ws.onclose = function () {
-            term.write('\r\n\x1b[31m[disconnected]\x1b[0m\r\n');
-        };
-        term.onData(function (d) {
-            if (ws.readyState === WebSocket.OPEN) ws.send(d);
-        });
-
-        window.addEventListener('resize', function () {
-            fitAddon.fit();
-            if (ws.readyState === WebSocket.OPEN)
-                ws.send('\x01RESIZE:' + term.rows + ',' + term.cols);
-        });
-    </script>
 </body>
 </html>

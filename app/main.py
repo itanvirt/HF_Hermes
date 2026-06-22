@@ -1,3 +1,4 @@
+import asyncio
 import json
 import mimetypes
 import os
@@ -7,6 +8,7 @@ import subprocess
 from pathlib import Path
 
 import httpx
+import websockets
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, File, Form, Request, UploadFile, WebSocket
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response, StreamingResponse
@@ -18,6 +20,7 @@ from app import auth, backup, status, terminal
 APP_DIR = Path(__file__).resolve().parent
 GATEWAY_PORT    = int(os.environ.get("GATEWAY_PORT", "8642"))
 DASHBOARD_PORT  = int(os.environ.get("DASHBOARD_PORT", "9119"))
+JUPYTER_PORT    = int(os.environ.get("JUPYTER_PORT", "8888"))
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", str(Path.home() / ".hermes")))
 HERMES_ENV_FILE = HERMES_HOME / ".env"
 TELEGRAM_WEBHOOK_PATH = os.environ.get("HERMES_TELEGRAM_WEBHOOK_PATH", "/telegram-webhook")
@@ -71,6 +74,7 @@ LOG_FILES = {
     "web":         "/var/log/supervisor/web.log",
     "supervisor":  "/var/log/supervisor/supervisord.log",
     "dashboard":   "/var/log/supervisor/dashboard.log",
+    "jupyter":     "/var/log/supervisor/jupyter.log",
     "startup":     "/home/user/app/data/startup.log",
     "hermes-setup":"/home/user/app/data/hermes-setup.log",
     "cloudflare":  "/home/user/app/data/cloudflare-setup.log",
@@ -289,19 +293,91 @@ async def terminal_page(request: Request):
     redirect = _require_session(request)
     if redirect:
         return redirect
-    return templates.TemplateResponse(
-        "terminal.html", {"request": request, "ws_path": "/ws/terminal", "page_title": "Terminal"}
-    )
+    return templates.TemplateResponse("terminal.html", {"request": request, "page_title": "Terminal"})
 
 
-@app.websocket("/ws/terminal")
-async def ws_terminal(websocket: WebSocket):
+# JupyterLab (terminado-backed terminal) reverse proxy. Jupyter binds to
+# 127.0.0.1 only — this is the sole authenticated path in, so every request
+# and socket here is gated by the same session cookie as the rest of /terminal.
+_JUPYTER_HOP_HEADERS = {"host", "content-length", "transfer-encoding", "content-encoding", "connection"}
+
+
+@app.api_route("/jupyter/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
+async def jupyter_proxy(path: str, request: Request):
+    if not auth.verify_session_cookie(request.cookies.get(auth.COOKIE_NAME)):
+        return RedirectResponse(url="/login?next=/terminal")
+
+    upstream_url = f"http://127.0.0.1:{JUPYTER_PORT}/jupyter/{path}"
+    body = await request.body()
+    fwd_headers = {k: v for k, v in request.headers.items() if k.lower() not in _JUPYTER_HOP_HEADERS}
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            upstream = await client.request(
+                request.method, upstream_url,
+                params=dict(request.query_params), content=body, headers=fwd_headers,
+            )
+    except httpx.ConnectError:
+        return PlainTextResponse(
+            "Jupyter terminal backend not running yet — check Logs → jupyter.", status_code=503
+        )
+
+    resp_headers = {k: v for k, v in upstream.headers.items() if k.lower() not in _JUPYTER_HOP_HEADERS}
+    return Response(content=upstream.content, status_code=upstream.status_code, headers=resp_headers)
+
+
+@app.websocket("/jupyter/{path:path}")
+async def jupyter_ws_proxy(websocket: WebSocket, path: str):
     if not auth.verify_session_cookie(websocket.cookies.get(auth.COOKIE_NAME)):
         await websocket.close(code=4401)
         return
-    await websocket.accept()
-    shell = os.environ.get("SHELL", "/bin/bash")
-    await terminal.run_pty(websocket, [shell], cwd=str(Path.home()))
+
+    upstream_url = f"ws://127.0.0.1:{JUPYTER_PORT}/jupyter/{path}"
+    if websocket.url.query:
+        upstream_url += f"?{websocket.url.query}"
+
+    try:
+        upstream = await websockets.connect(
+            upstream_url,
+            subprotocols=websocket.scope.get("subprotocols") or None,
+            origin=websocket.headers.get("origin"),
+        )
+    except Exception:
+        await websocket.close(code=1011)
+        return
+
+    await websocket.accept(subprotocol=upstream.subprotocol)
+
+    async def from_client():
+        while True:
+            message = await websocket.receive()
+            if message["type"] == "websocket.disconnect":
+                return
+            data = message.get("bytes")
+            if data is not None:
+                await upstream.send(data)
+            else:
+                text = message.get("text")
+                if text is not None:
+                    await upstream.send(text)
+
+    async def from_upstream():
+        async for data in upstream:
+            if isinstance(data, bytes):
+                await websocket.send_bytes(data)
+            else:
+                await websocket.send_text(data)
+
+    tasks = [asyncio.create_task(from_client()), asyncio.create_task(from_upstream())]
+    try:
+        await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+    finally:
+        for task in tasks:
+            task.cancel()
+        await upstream.close()
+        try:
+            await websocket.close()
+        except Exception:
+            pass
 
 
 @app.websocket("/ws/agent")
