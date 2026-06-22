@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # Auto-deploys a Cloudflare Worker that:
-#  1. pings this Space's /health endpoint on a schedule, so the free-tier
-#     Space doesn't go to sleep, and
+#  1. pings this Space's /health endpoint twice a day (well under the 48h
+#     free-tier sleep threshold, with margin for a missed ping) so the
+#     Space doesn't go to sleep. Deliberately low-frequency: a Worker
+#     hitting /health every few minutes has gotten real Spaces auto-flagged
+#     as abusive by HF's abuse-handler (see discuss.huggingface.co thread
+#     "Keepalive ping (GET /health/ready every 2 minutes)"), and
 #  2. reverse-proxies Telegram's Bot API (api.telegram.org), so the gateway
 #     can reach Telegram even when this network blocks direct outbound
 #     connections to it.
@@ -140,7 +144,7 @@ else
         -H "Authorization: Bearer ${CLOUDFLARE_WORKERS_TOKEN}" \
         -H "Content-Type: application/json" \
         "$API/accounts/$ACCOUNT_ID/workers/scripts/$WORKER_NAME/schedules" \
-        -d '[{"cron":"*/10 * * * *"}]')
+        -d '[{"cron":"0 */12 * * *"}]')
     cat /tmp/cloudflare-schedule.json >>"$LOG"
     echo >>"$LOG"
     if [ "$SCHEDULE_CODE" != "200" ]; then
@@ -148,7 +152,7 @@ else
         echo "[cloudflare] Worker schedule failed: $DETAIL" >>"$LOG"
         write_state "keepawake" "error" "$WORKER_NAME" "$TARGET" "schedule: $DETAIL"
     else
-        echo "[cloudflare] deployed Worker '$WORKER_NAME' pinging $TARGET every 10 min." >>"$LOG"
+        echo "[cloudflare] deployed Worker '$WORKER_NAME' pinging $TARGET every 12h." >>"$LOG"
         write_state "keepawake" "configured" "$WORKER_NAME" "$TARGET" ""
     fi
 fi

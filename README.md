@@ -83,7 +83,7 @@ for the very first time.
 | **ENV Builder** | View and edit your configuration without redeploying the Space. |
 | Telegram bot | Hermes's messaging gateway, talking to your bot via long-polling (no public webhook needed). |
 | Automatic backups | Agent state mirrored file-by-file into a private Hugging Face dataset — no tarballs, no unbounded growth. |
-| Automatic keep-awake | A tiny Cloudflare Worker pings the Space every 10 minutes so the free tier doesn't sleep. |
+| Automatic keep-awake | A tiny Cloudflare Worker pings the Space every 12 hours so the free tier doesn't sleep. |
 
 ## Before you start
 
@@ -257,10 +257,12 @@ and clicking buttons on the dashboard. The in-browser Terminal is there if
 you ever want to go further, but it's optional.
 
 **Will my free Space go to sleep?**
-Free Hugging Face Spaces normally sleep after inactivity. Setting
+Free Hugging Face Spaces normally sleep after 48h of inactivity. Setting
 `CLOUDFLARE_WORKERS_TOKEN` (Step 2.6 above) deploys a Worker that pings the
-Space every 10 minutes so it never goes idle — automatic, no extra setup
-once the secret is set.
+Space every 12 hours so it never goes idle — automatic, no extra setup
+once the secret is set. The schedule is deliberately low-frequency: a
+Worker pinging every few minutes has gotten real free-tier Spaces
+auto-flagged as abusive by Hugging Face.
 
 **Is my data private?**
 Your agent's state backs up to a **private** Hugging Face dataset under

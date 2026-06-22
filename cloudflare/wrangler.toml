@@ -2,6 +2,8 @@ name = "hermes-agent-proxy"
 main = "worker.js"
 compatibility_date = "2024-09-01"
 
-# Ping the Space every 10 minutes to keep a free-tier Space awake.
+# Ping the Space every 12 hours to keep a free-tier Space awake. Kept
+# deliberately low-frequency: a Worker pinging every few minutes has gotten
+# real Spaces auto-flagged as abusive by HF's abuse-handler.
 [triggers]
-crons = ["*/10 * * * *"]
+crons = ["0 */12 * * *"]

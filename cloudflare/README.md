@@ -82,7 +82,7 @@ curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
 
 ## Verify keep-awake
 
-The cron trigger runs every 10 minutes (edit `wrangler.toml` to change the
+The cron trigger runs every 12 hours (edit `wrangler.toml` to change the
 schedule) and calls `${SPACE_URL}/health`. You can trigger it manually for
 testing:
 
