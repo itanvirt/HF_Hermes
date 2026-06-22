@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Auto-deploys a Cloudflare Worker that:
-#  1. pings this Space's /health endpoint twice a day (well under the 48h
+#  1. pings this Space's /health endpoint once a day (well under the 48h
 #     free-tier sleep threshold, with margin for a missed ping) so the
 #     Space doesn't go to sleep. Deliberately low-frequency: a Worker
 #     hitting /health every few minutes has gotten real Spaces auto-flagged
